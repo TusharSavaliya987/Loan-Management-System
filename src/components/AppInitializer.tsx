@@ -4,13 +4,21 @@ import { useAuthStore } from "@/store/authStore";
 // import { useLoanStore } from "@/store/loanStore"; // We'll re-evaluate this after loanStore is Firebase-aware
 import { useEffect } from "react";
 
-export function AppInitializer() {
-  // By calling useAuthStore() here, or accessing a state, we ensure the store is initialized
-  // and the onAuthStateChanged listener within it is set up when the app loads.
-  // We don't actually need to use the returned values here if the goal is just initialization.
-  useEffect(() => {
-    useAuthStore.getState(); // Accessing the store ensures its creation and listener setup
-  }, []);
+export function AppInitializer({ children }: { children: React.ReactNode }) {
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
-  return null; 
+  useEffect(() => {
+    // This effect ensures the store is subscribed to and onAuthStateChanged is set up.
+    // The initial call to getState() is implicitly handled by useAuthStore hook.
+    // console.log("AppInitializer: Auth isLoading:", isLoading, "IsAuthenticated:", isAuthenticated);
+  }, [isLoading, isAuthenticated]);
+
+  if (isLoading) {
+    // console.log("AppInitializer: Showing loading screen because auth is loading.");
+    return <div>Loading application...</div>; // Or a proper global loading spinner
+  }
+
+  // console.log("AppInitializer: Auth loaded, rendering children.");
+  return <>{children}</>;
 }

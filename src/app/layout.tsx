@@ -28,8 +28,11 @@ export default function RootLayout({
             <TooltipProvider>
               <ShadcnToaster />
               <SonnerToaster />
-              <AppInitializer />
-              {children}
+              <AppInitializer>
+                {/* The AppInitializer will now show a loading state 
+                    until authentication is resolved, before rendering children */}
+                {children}
+              </AppInitializer>
             </TooltipProvider>
           </ThemeProvider>
         </QueryProvider>

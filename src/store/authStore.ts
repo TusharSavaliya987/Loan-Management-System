@@ -9,6 +9,7 @@ import {
 } from 'firebase/auth';
 import { persist } from 'zustand/middleware';
 import Cookies from 'js-cookie';
+import { useLoanStore } from './loanStore';
 
 export interface AppUser {
   uid: string;
@@ -52,13 +53,16 @@ export const useAuthStore = create<AuthState>()(
                 sameSite: 'strict',
                 path: '/',
               });
+              useLoanStore.getState().initializeData();
             } else {
               Cookies.remove('auth-session', { path: '/' });
+              useLoanStore.getState().clearLocalData();
             }
           } catch (error: any) {
             console.error('Error during onAuthStateChanged processing:', error);
             authError = error.message || 'Error processing auth state.';
             Cookies.remove('auth-session', { path: '/' });
+            useLoanStore.getState().clearLocalData();
             appUser = null;
             authenticated = false;
           } finally {
@@ -107,53 +111,36 @@ export const useAuthStore = create<AuthState>()(
         logout: async () => {
           set({ isLoading: true, error: null });
           try {
-            // Attempt server-side logout first
             const response = await fetch('/api/auth/logout', {
               method: 'POST',
               credentials: 'include',
             });
 
-            // Proactive client-side cleanup (cookies and storage)
             Cookies.remove('auth-session', { path: '/' });
             localStorage.removeItem('auth-storage');
-            sessionStorage.removeItem('auth-storage');
-
+            
             if (!response.ok) {
               const data = await response.json().catch(() => ({ message: 'Logout API call failed and failed to parse error response.' }));
-              // Log the error but still attempt client-side sign out
               console.error('Logout API call failed:', data.message || 'Unknown API error');
-              // Fall through to client-side sign out and state update
             }
 
-            // Perform client-side Firebase sign out
-            // This is crucial for onAuthStateChanged to pick up the change
             await firebaseSignOut(auth);
-
-            // onAuthStateChanged will handle setting user, isAuthenticated, isLoading to false.
-            // However, we can set isLoading to false and clear user/isAuthenticated here for faster UI update
-            // if onAuthStateChanged is slow or if we want to be absolutely sure.
-            // The previous version of the fix already set these, which is fine.
             set({
               user: null,
               isAuthenticated: false,
-              isLoading: false, // Explicitly false
-              error: null, // Clear any previous login errors
+              isLoading: false,
+              error: null,
             });
 
           } catch (e: any) {
-            console.error("Logout action error (outer catch, possibly firebaseSignOut error or network issue):");
-            // Ensure client-side Firebase sign out is attempted even if API call failed earlier and threw
-            // or if firebaseSignOut itself fails.
+            console.error("Logout action error:", e);
             try {
-              await firebaseSignOut(auth); // Attempt signout again if initial fetch failed
+              await firebaseSignOut(auth);
             } catch (signOutError) {
               console.error("Firebase signOut error during logout catch block:", signOutError);
             }
-
-            // Final state update for logout failure
             Cookies.remove('auth-session', { path: '/' });
             localStorage.removeItem('auth-storage');
-            sessionStorage.removeItem('auth-storage');
             set({
               user: null,
               isAuthenticated: false,

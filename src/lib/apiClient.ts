@@ -1,4 +1,5 @@
 import { auth } from './firebase'; // Assuming this is your client-side Firebase auth instance
+import Cookies from 'js-cookie';
 
 interface RequestOptions extends RequestInit {
   body?: any; // Allow structured body
@@ -13,24 +14,18 @@ async function apiClient<T = any>(
     'Content-Type': 'application/json',
   };
 
-  const currentUser = auth.currentUser;
-  if (currentUser) {
-    try {
-      const token = await currentUser.getIdToken();
-      headers['Authorization'] = `Bearer ${token}`;
-    } catch (error) {
-      console.error("Error getting ID token:", error);
-      // Handle error appropriately, e.g., redirect to login or throw
-      throw new Error("User not authenticated or token retrieval failed.");
-    }
+  // Get token from cookie
+  const token = Cookies.get('auth-session');
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   } else {
-    // Handle cases where user is not logged in but an authenticated endpoint is called
-    // This might be an error, or some endpoints might be public
-    console.warn(`API call to ${endpoint} made without a logged-in user.`);
+    // Handle cases where token is not available
+    console.warn(`API call to ${endpoint} made without an auth token cookie.`);
     // Depending on your API design, you might throw an error here or allow the call
-    // For now, we'll throw if it's not a GET request or a known public endpoint
-    if (method !== 'GET') { // Example: restrict non-GET calls without auth
-        // throw new Error("User not authenticated.");
+    // For now, we'll throw if it's not a GET request to prevent unintended mutations
+    if (method !== 'GET') {
+      // throw new Error("User not authenticated: No auth token cookie found.");
     }
   }
 
