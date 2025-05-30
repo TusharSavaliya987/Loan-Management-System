@@ -124,66 +124,6 @@ const Reminders = () => {
                         </span></p>
                         <p className="text-sm mt-1">Payment Type: <span className="font-medium capitalize">{payment.frequency}</span></p>
                       </div>
-                      <Dialog open={emailDialogOpen && selectedCustomer?.email === payment.customerEmail} onOpenChange={(open) => {
-                        setEmailDialogOpen(open);
-                        if (!open) setSelectedCustomer(null);
-                      }}>
-                        <DialogTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => setSelectedCustomer({
-                              name: payment.customerName,
-                              email: payment.customerEmail,
-                              dueDate: payment.dueDate,
-                              amount: payment.amount
-                            })}
-                          >
-                            <Mail className="h-4 w-4 mr-2" />
-                            Send Reminder
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Send Payment Reminder</DialogTitle>
-                            <DialogDescription>
-                              Send an email reminder to {selectedCustomer?.name} about their upcoming interest payment.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="space-y-4 py-2">
-                            <div className="space-y-2">
-                              <Label htmlFor="recipient">Recipient</Label>
-                              <Input id="recipient" value={selectedCustomer?.email || ""} readOnly />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="subject">Subject</Label>
-                              <Input 
-                                id="subject" 
-                                value={`Interest Payment Reminder - Due on ${selectedCustomer ? format(parseISO(selectedCustomer.dueDate), "dd MMM yyyy") : ""}`} 
-                                readOnly 
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="message">Message</Label>
-                              <Textarea 
-                                id="message" 
-                                rows={5}
-                                defaultValue={`Dear ${selectedCustomer?.name},
-
-This is a friendly reminder that your interest payment of ₹${selectedCustomer?.amount.toLocaleString('en-IN')} is due on ${selectedCustomer ? format(parseISO(selectedCustomer.dueDate), "dd MMMM yyyy") : ""}.
-
-Please make your payment before the due date to avoid any late fees.
-
-Thank you.`}
-                              />
-                            </div>
-                          </div>
-                          <DialogFooter>
-                            <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>Cancel</Button>
-                            <Button onClick={handleSendEmail}>Send Email</Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
                     </div>
                   </CardContent>
                 </Card>
