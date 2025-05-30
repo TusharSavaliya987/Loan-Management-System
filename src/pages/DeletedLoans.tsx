@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useLoanStore } from "@/store/loanStore";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,31 +8,41 @@ import { Button } from "@/components/ui/button";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { ArrowLeft, Trash, RefreshCcw } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { Loan as LoanType } from "@/types/loan";
 
 const DeletedLoans = () => {
-  const { deletedLoans, restoreLoan, getCustomer } = useLoanStore();
+  const loans = useLoanStore(state => state.loans);
+  const restoreLoan = useLoanStore(state => state.restoreLoan);
+  const getCustomer = useLoanStore(state => state.getCustomer);
+  const getStoreError = useLoanStore(state => state.error);
+
   const router = useRouter();
   const { toast } = useToast();
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const handleRestore = (loanId: string) => {
-    const success = restoreLoan(loanId);
-    if (success) {
+  const deletedLoansArray: LoanType[] = useMemo(() => {
+    return loans.filter(loan => loan.status === 'deleted');
+  }, [loans]);
+
+  const handleRestore = async (loanId: string) => {
+    try {
+      await restoreLoan(loanId);
       toast({
         title: "Loan restored",
         description: "The loan has been successfully restored.",
       });
-      setRefreshTrigger(prev => prev + 1);
-    } else {
+    } catch (error) {
+      console.error("Restore failed in component:", error);
+      const storeError = getStoreError;
       toast({
         variant: "destructive",
         title: "Restore failed",
-        description: "Could not restore this loan. Please try again.",
+        description: storeError || "Could not restore the loan. Please try again.",
       });
     }
   };
 
-  const calculateDaysLeft = (deletedAt: string) => {
+  const calculateDaysLeft = (deletedAt?: string | null) => {
+    if (!deletedAt) return 0;
     const deletedDate = parseISO(deletedAt);
     const currentDate = new Date();
     const daysPassed = differenceInDays(currentDate, deletedDate);
@@ -49,7 +59,7 @@ const DeletedLoans = () => {
         </Button>
       </div>
 
-      {deletedLoans.length === 0 ? (
+      {deletedLoansArray.length === 0 ? (
         <div className="text-center py-10 border rounded-lg">
           <Trash className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
           <h3 className="text-lg font-medium">No deleted loans</h3>
@@ -59,16 +69,16 @@ const DeletedLoans = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {deletedLoans.map(({ loan, deletedAt }) => {
+          {deletedLoansArray.map((loan) => {
             const customer = getCustomer(loan.customerId);
-            const daysLeft = calculateDaysLeft(deletedAt);
+            const daysLeft = calculateDaysLeft(loan.deletedAt);
             
             return (
               <Card key={loan.id} className="border-dashed border-destructive/30">
                 <CardHeader>
                   <CardTitle>{customer?.name || "Unknown Customer"}</CardTitle>
                   <CardDescription>
-                    Deleted on {format(parseISO(deletedAt), "PPP")}
+                    Deleted on {loan.deletedAt ? format(parseISO(loan.deletedAt), "PPP") : "N/A"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

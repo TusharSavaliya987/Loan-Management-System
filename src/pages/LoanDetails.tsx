@@ -22,7 +22,7 @@ const LoanDetails = () => {
   const id = params?.id;
   const getLoan = useLoanStore(state => state.getLoan);
   const getCustomer = useLoanStore(state => state.getCustomer);
-  const updateLoanStatus = useLoanStore(state => state.updateLoanStatus);
+  const updateLoan = useLoanStore(state => state.updateLoan);
   const markPrincipalPaid = useLoanStore(state => state.markPrincipalPaid);
   
   const [closingConfirmOpen, setClosingConfirmOpen] = useState(false);
@@ -65,20 +65,30 @@ const LoanDetails = () => {
     toast.success("PDF report generated successfully");
   };
   
-  const handleCloseLoan = () => {
+  const handleCloseLoan = async () => {
     if (!loan) return;
     
-    updateLoanStatus(loan.id, "closed");
-    setClosingConfirmOpen(false);
-    toast.success("Loan has been closed");
+    try {
+      await updateLoan(loan.id, { status: "closed" });
+      setClosingConfirmOpen(false);
+      toast.success("Loan has been closed");
+    } catch (error) {
+      console.error("Failed to close loan:", error);
+      toast.error("Failed to close the loan. Please try again.");
+    }
   };
   
-  const handleMarkPrincipalPaid = () => {
+  const handleMarkPrincipalPaid = async () => {
     if (!loan) return;
     
-    markPrincipalPaid(loan.id);
-    setPrincipalConfirmOpen(false);
-    toast.success("Principal amount marked as paid");
+    try {
+      await markPrincipalPaid(loan.id);
+      setPrincipalConfirmOpen(false);
+      toast.success("Principal amount marked as paid");
+    } catch (error) {
+      console.error("Failed to mark principal paid:", error);
+      toast.error("Failed to mark principal as paid. Please try again.");
+    }
   };
   
   if (!loan || !customer) {

@@ -1,4 +1,3 @@
-
 export type CustomerInfo = {
   id: string;
   name: string;
@@ -31,7 +30,11 @@ export type Loan = {
   endDate: string; // ISO string
   interestFrequency: InterestFrequency;
   interestPayments: InterestPayment[];
-  status: "active" | "closed";
+  status: "active" | "closed" | "deleted";
   principalPaid: boolean;
   contractNote?: string; // Optional contract note image (Base64 string)
+  deletedAt?: string; // Added optional deletedAt timestamp
+  createdAt?: string; // Added optional createdAt timestamp
+  updatedAt?: string; // Added optional updatedAt timestamp
+  userId?: string; // Added optional userId
 };
