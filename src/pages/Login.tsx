@@ -64,7 +64,7 @@ const Login = () => {
       toast({
         title: "Login Successful",
         description: "Redirecting to your dashboard...",
-        variant: "success", // Added variant for visual cue
+        variant: "default", // Added variant for visual cue
       });
       // No explicit router.push here, relies on isAuthenticated effect.
     } catch (error: any) {
