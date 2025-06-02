@@ -31,7 +31,7 @@ const Login = () => {
   // Clear auth error on component mount or when email/password changes
   useEffect(() => {
     clearError();
-  }, [clearError]);
+  }, [clearError, email, password]);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -55,19 +55,24 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Clear previous errors before attempting login
+    clearError(); 
     try {
-      await login(email, password); // Use email
-      // Successful login will trigger onAuthStateChanged, which updates isAuthenticated.
-      // The useEffect above will then handle redirection.
-      // We don't need to check for success here explicitly if redirection logic is robust.
+      await login(email, password);
+      // On successful login, authStore updates isAuthenticated.
+      // The useEffect above will handle redirection automatically.
       toast({
-        title: "Login successful",
-        description: "Welcome back!",
+        title: "Login Successful",
+        description: "Redirecting to your dashboard...",
+        variant: "success", // Added variant for visual cue
       });
-      // Redirection is handled by the useEffect listening to isAuthenticated
+      // No explicit router.push here, relies on isAuthenticated effect.
     } catch (error: any) {
-      // Error is already set in authStore and handled by the useEffect for authError
-      // console.error("Login submission error:", error.message); // Already logged in store
+      // The authStore's login action now throws the error, 
+      // and sets state.error, which the useEffect for authError will pick up.
+      // So, no specific error handling needed here unless you want to do something additional.
+      // The toast for errors is already handled by the authError useEffect.
+      // console.error("Login page submit error:", error.message); 
     }
   };
 

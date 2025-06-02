@@ -1,12 +1,7 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/firebase';
-import { signOut } from 'firebase/auth';
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    // Sign out from Firebase
-    await signOut(auth);
-
     // Create response
     const response = NextResponse.json(
       { message: 'Logged out successfully' },
@@ -18,16 +13,25 @@ export async function POST() {
       name: 'auth-session',
       value: '',
       path: '/',
-      httpOnly: true, // If it was set as httpOnly by another server process
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 0 // Effectively deletes the cookie
+      sameSite: 'lax',
+      maxAge: 0
     });
     
-    // As an alternative or for cookies not set with httpOnly from server:
-    // response.cookies.delete({ name: 'auth-session', path: '/' });
+    // Optional: If you were using Firebase Admin SDK to manage sessions and wanted to revoke it:
+    // const sessionCookie = request.cookies.get('auth-session')?.value;
+    // if (sessionCookie) {
+    //   try {
+    //     const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie);
+    //     await adminAuth.revokeRefreshTokens(decodedClaims.sub);
+    //   } catch (revokeError) {
+    //     console.warn("Failed to revoke session cookie during logout:", revokeError);
+    //     // Still proceed to clear cookie from client
+    //   }
+    // }
 
-    // Set cache control headers
+    // Set cache control headers to prevent caching of the logout response
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     response.headers.set('Pragma', 'no-cache');
     response.headers.set('Expires', '0');

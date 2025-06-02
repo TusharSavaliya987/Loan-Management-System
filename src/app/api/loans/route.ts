@@ -1,21 +1,26 @@
 import { NextResponse } from 'next/server';
-import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
+import { db, auth as firebaseAdminAuth } from '@/lib/firebaseAdmin';
+import { cookies } from 'next/headers';
 
 export async function GET(request: Request) {
-  try {
-    // Get the authorization header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
+  if (!firebaseAdminAuth || !db) {
+    console.error("API Error: Firebase Admin SDK not initialized for /api/loans. Check server logs.");
+    return NextResponse.json({ message: "Server configuration error." }, { status: 500 });
+  }
 
-    // Verify the token
-    const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await adminAuth.verifyIdToken(token);
-    const userId = decodedToken.uid;
+  const cookieStore = cookies();
+  const sessionCookie = cookieStore.get('auth-session')?.value;
+
+  if (!sessionCookie) {
+    return NextResponse.json({ message: 'Authentication required. No session cookie found.' }, { status: 401 });
+  }
+  
+  try {
+    const decodedClaims = await firebaseAdminAuth.verifySessionCookie(sessionCookie, true /* checkRevoked */);
+    const userId = decodedClaims.uid;
 
     // Get all loans for the user where status is not 'permanently_deleted'
-    const loansSnapshot = await adminDb
+    const loansSnapshot = await db
       .collection('loans')
       .where('userId', '==', userId)
       .where('status', '!=', 'permanently_deleted')
@@ -29,6 +34,12 @@ export async function GET(request: Request) {
     return NextResponse.json(loans);
   } catch (error: any) {
     console.error('Error in GET /api/loans:', error);
+    if (error.code === 'auth/session-cookie-expired' || error.code === 'auth/session-cookie-revoked' || error.code === 'auth/argument-error') {
+      // Clear the invalid cookie from the client
+      const response = NextResponse.json({ message: 'Authentication error: ' + error.message }, { status: 401 });
+      response.cookies.set({ name: 'auth-session', value: '', maxAge: 0, path: '/', httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' });
+      return response;
+    }
     return NextResponse.json(
       { message: error.message || 'Internal server error' },
       { status: 500 }
@@ -37,17 +48,21 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  try {
-    // Get the authorization header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
+  if (!firebaseAdminAuth || !db) {
+    console.error("API Error: Firebase Admin SDK not initialized for /api/loans. Check server logs.");
+    return NextResponse.json({ message: "Server configuration error." }, { status: 500 });
+  }
+  
+  const cookieStore = cookies();
+  const sessionCookie = cookieStore.get('auth-session')?.value;
 
-    // Verify the token
-    const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await adminAuth.verifyIdToken(token);
-    const userId = decodedToken.uid;
+  if (!sessionCookie) {
+    return NextResponse.json({ message: 'Authentication required. No session cookie found.' }, { status: 401 });
+  }
+
+  try {
+    const decodedClaims = await firebaseAdminAuth.verifySessionCookie(sessionCookie, true /* checkRevoked */);
+    const userId = decodedClaims.uid;
 
     // Get the loan data from the request body
     const loanData = await request.json();
@@ -62,7 +77,7 @@ export async function POST(request: Request) {
     };
 
     // Add the loan to Firestore
-    const loanRef = await adminDb.collection('loans').add(loanWithMetadata);
+    const loanRef = await db.collection('loans').add(loanWithMetadata);
     
     // Get the created loan
     const newLoan = await loanRef.get();
@@ -74,6 +89,12 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error('Error in POST /api/loans:', error);
+    if (error.code === 'auth/session-cookie-expired' || error.code === 'auth/session-cookie-revoked' || error.code === 'auth/argument-error') {
+      // Clear the invalid cookie from the client
+      const response = NextResponse.json({ message: 'Authentication error: ' + error.message }, { status: 401 });
+      response.cookies.set({ name: 'auth-session', value: '', maxAge: 0, path: '/', httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' });
+      return response;
+    }
     return NextResponse.json(
       { message: error.message || 'Internal server error' },
       { status: 500 }

@@ -5,18 +5,19 @@ import { useAuthStore } from "@/store/authStore";
 import { useEffect } from "react";
 
 export function AppInitializer({ children }: { children: React.ReactNode }) {
+  // isLoading is true initially and set to false after initializeAuth completes.
   const isLoading = useAuthStore((state) => state.isLoading);
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  // const isAuthenticated = useAuthStore((state) => state.isAuthenticated); // Not directly used for rendering decision here
 
   useEffect(() => {
-    // This effect ensures the store is subscribed to and onAuthStateChanged is set up.
-    // The initial call to getState() is implicitly handled by useAuthStore hook.
-    // console.log("AppInitializer: Auth isLoading:", isLoading, "IsAuthenticated:", isAuthenticated);
-  }, [isLoading, isAuthenticated]);
+    // The authStore now self-initializes by calling initializeAuth().
+    // This useEffect can be used for debugging or if any reaction to isLoading change is needed here.
+    // console.log("AppInitializer: Auth isLoading state:", isLoading);
+  }, [isLoading]);
 
   if (isLoading) {
-    // console.log("AppInitializer: Showing loading screen because auth is loading.");
-    return <div>Loading application...</div>; // Or a proper global loading spinner
+    // console.log("AppInitializer: Auth state is loading. Showing loading screen.");
+    return <div className="flex items-center justify-center min-h-screen">Loading application...</div>; 
   }
 
   // console.log("AppInitializer: Auth loaded, rendering children.");

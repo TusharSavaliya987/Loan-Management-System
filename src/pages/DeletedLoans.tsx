@@ -46,7 +46,7 @@ const DeletedLoans = () => {
     const deletedDate = parseISO(deletedAt);
     const currentDate = new Date();
     const daysPassed = differenceInDays(currentDate, deletedDate);
-    const daysLeft = 100 - daysPassed;
+    const daysLeft = 10- daysPassed;
     return daysLeft > 0 ? daysLeft : 0;
   };
 
@@ -64,7 +64,7 @@ const DeletedLoans = () => {
           <Trash className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
           <h3 className="text-lg font-medium">No deleted loans</h3>
           <p className="text-muted-foreground mt-1">
-            Deleted loans will appear here for up to 100 days before being permanently removed.
+            Deleted loans will appear here for up to 10 days before being permanently removed.
           </p>
         </div>
       ) : (
