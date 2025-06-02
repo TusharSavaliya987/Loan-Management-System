@@ -77,6 +77,14 @@ interface LoanState {
   isLoadingLoans: boolean;
   error: string | null;
   
+  // Pagination state
+  currentLoanPage: number;
+  currentCustomerPage: number;
+  currentDeletedLoanPage: number;
+  currentReminderPage: number;
+  currentUpcomingPaymentPage: number;
+  itemsPerPage: number;
+  
   // Removed Firestore listener unsubscribe functions
   // unsubscribeCustomers: (() => void) | null;
   // unsubscribeLoans: (() => void) | null;
@@ -96,6 +104,19 @@ interface LoanState {
   restoreLoan: (loanId: string) => Promise<void>;
   permanentlyDeleteOldSoftDeletedLoans: (daysToExpire: number) => Promise<void>;
 
+  // Pagination actions
+  setLoanPage: (page: number) => void;
+  setCustomerPage: (page: number) => void;
+  setDeletedLoanPage: (page: number) => void;
+  setReminderPage: (page: number) => void;
+  setUpcomingPaymentPage: (page: number) => void;
+
+  // Pagination selectors (implicitly, will be used in component logic or could be explicit getters)
+  // getPaginatedLoans: () => Loan[];
+  // getPaginatedCustomers: () => CustomerInfo[];
+  // getLoanPageCount: () => number;
+  // getCustomerPageCount: () => number;
+
   clearLocalData: () => void; // To clear data on logout
   initializeData: () => Promise<void>; // To fetch initial data on login
 }
@@ -106,6 +127,15 @@ export const useLoanStore = create<LoanState>((set, get) => ({
   isLoadingCustomers: true,
   isLoadingLoans: true,
   error: null,
+  
+  // Pagination initial state
+  currentLoanPage: 1,
+  currentCustomerPage: 1,
+  currentDeletedLoanPage: 1,
+  currentReminderPage: 1,
+  currentUpcomingPaymentPage: 1,
+  itemsPerPage: 6,
+
   // Removed listener state
   // unsubscribeCustomers: null,
   // unsubscribeLoans: null,
@@ -137,7 +167,7 @@ export const useLoanStore = create<LoanState>((set, get) => ({
   
   fetchCustomers: async () => {
     // User UID is handled by apiClient via auth.currentUser
-    set({ isLoadingCustomers: true, error: null });
+    set({ isLoadingCustomers: true, error: null, currentCustomerPage: 1 }); // Reset page on fetch
     try {
       const customersData = await apiClient<CustomerInfo[]>('customers', 'GET');
       set({ customers: customersData || [], isLoadingCustomers: false });
@@ -149,7 +179,14 @@ export const useLoanStore = create<LoanState>((set, get) => ({
 
   fetchLoans: async () => {
     // User UID is handled by apiClient
-    set({ isLoadingLoans: true, error: null });
+    set({ 
+      isLoadingLoans: true, 
+      error: null, 
+      currentLoanPage: 1, 
+      currentDeletedLoanPage: 1,
+      currentReminderPage: 1,
+      currentUpcomingPaymentPage: 1
+    }); 
     try {
       // Assuming an endpoint 'loans' that filters by status != 'permanently_deleted' on backend
       const loansData = await apiClient<Loan[]>('loans', 'GET');
@@ -269,8 +306,8 @@ export const useLoanStore = create<LoanState>((set, get) => ({
         finalLoanData.interestPayments = [...paidPayments, ...newPendingPayments];
       }
       
-      // API endpoint PUT /api/loans/{loanId}
-      const updatedLoan = await apiClient<Loan>(`loans/${loanId}`, 'PUT', finalLoanData);
+      // API endpoint PUT /api/loans/update/{loanId}
+      const updatedLoan = await apiClient<Loan>(`loans/update/${loanId}`, 'PUT', finalLoanData);
       
       if (updatedLoan) {
         // Update the loan in the local state
@@ -377,12 +414,15 @@ export const useLoanStore = create<LoanState>((set, get) => ({
     );
   },
 
-  deleteLoanSoft: async (loanId: string) => {
+  deleteLoanSoft: async (loanId) => {
     set({ isLoadingLoans: true, error: null });
     try {
-      // API endpoint DELETE /api/loans/{loanId}
-      // Backend will handle marking as 'deleted' and setting 'deletedAt'.
-      await apiClient<void>(`loans/${loanId}`, 'DELETE');
+      const response = await fetch(`/api/loans/delete/${loanId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error("Failed to delete loan.");
+      }
       
       // Re-fetch loans to update the list to reflect the soft delete
       await get().fetchLoans(); 
@@ -396,22 +436,22 @@ export const useLoanStore = create<LoanState>((set, get) => ({
     }
   },
 
-  restoreLoan: async (loanId: string) => {
+  restoreLoan: async (loanId) => {
     set({ isLoadingLoans: true, error: null });
     try {
-      // API endpoint PATCH /api/loans/{loanId}/restore
-      // Backend will set status to 'active' and nullify/remove 'deletedAt'.
-      const updatedLoan = await apiClient<Loan>(`loans/${loanId}/restore`, 'PATCH', { status: "active" } /* or empty if implicit */);
-      
-      if (updatedLoan) {
-         set(state => ({
-          loans: state.loans.map(l => l.id === loanId ? updatedLoan : l),
-          isLoadingLoans: false,
-          error: null
-        }));
-      } else {
-        await get().fetchLoans(); // Re-fetch for consistency
+      const response = await fetch(`/api/loans/restore/${loanId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        throw new Error("Failed to restore loan.");
       }
+      
+      // Re-fetch loans to update the list after permanent deletion
+      await get().fetchLoans();
+
     } catch (err: any) {
       console.error("Error restoring loan via API:", err);
       set({ error: "Failed to restore loan. " + (err.message || 'Unknown error'), isLoadingLoans: false });
@@ -437,6 +477,93 @@ export const useLoanStore = create<LoanState>((set, get) => ({
       set({ error: "Failed to permanently delete old loans. " + (err.message || 'Unknown error')});
     } finally {
       set({ isLoadingLoans: false });
+    }
+  },
+
+  // Pagination Actions with defensive set
+  setLoanPage: (page) => {
+    const currentVal = get().currentLoanPage;
+    const activeLoans = get().loans.filter(l => l.status === 'active');
+    const totalItems = activeLoans.length;
+    const itemsPerPageVal = get().itemsPerPage;
+    const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPageVal));
+    let targetPage = page;
+    if (!(targetPage >= 1 && targetPage <= totalPages)) {
+      if (totalItems === 0) { targetPage = 1; }
+      else if (targetPage < 1) { targetPage = 1; }
+      else { targetPage = totalPages; }
+    }
+    if (currentVal !== targetPage) {
+      set({ currentLoanPage: targetPage });
+    }
+  },
+  setCustomerPage: (page) => {
+    const currentVal = get().currentCustomerPage;
+    const totalItems = get().customers.length;
+    const itemsPerPageVal = get().itemsPerPage;
+    const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPageVal));
+    let targetPage = page;
+    if (!(targetPage >= 1 && targetPage <= totalPages)) {
+      if (totalItems === 0) { targetPage = 1; }
+      else if (targetPage < 1) { targetPage = 1; }
+      else { targetPage = totalPages; }
+    }
+    if (currentVal !== targetPage) {
+      set({ currentCustomerPage: targetPage });
+    }
+  },
+  setDeletedLoanPage: (page) => {
+    const currentVal = get().currentDeletedLoanPage;
+    const deletedLoans = get().loans.filter(l => l.status === 'deleted');
+    const totalItems = deletedLoans.length;
+    const itemsPerPageVal = get().itemsPerPage;
+    const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPageVal));
+    let targetPage = page;
+    if (!(targetPage >= 1 && targetPage <= totalPages)) {
+      if (totalItems === 0) { targetPage = 1; }
+      else if (targetPage < 1) { targetPage = 1; }
+      else { targetPage = totalPages; }
+    }
+    if (currentVal !== targetPage) {
+      set({ currentDeletedLoanPage: targetPage });
+    }
+  },
+  setReminderPage: (page) => {
+    const currentVal = get().currentReminderPage;
+    // The actual filtered list for reminders is in Reminders.tsx (upcomingPayments)
+    // For totalPages calculation here, we need to approximate or accept that this might lead to
+    // the component's own pagination logic overriding if totalPages differs significantly.
+    // Let's use a simplified logic based on active loans with pending payments for store-side check.
+    const reminderEligibleLoans = get().loans.filter(loan => 
+      loan.status === "active" && loan.interestPayments.some(p => p.status === 'pending')
+    );
+    const totalItems = reminderEligibleLoans.length; // This is an approximation
+    const itemsPerPageVal = get().itemsPerPage;
+    const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPageVal));
+    let targetPage = page;
+    if (!(targetPage >= 1 && targetPage <= totalPages)) {
+      if (totalItems === 0) { targetPage = 1; }
+      else if (targetPage < 1) { targetPage = 1; }
+      else { targetPage = totalPages; }
+    }
+    if (currentVal !== targetPage) {
+      set({ currentReminderPage: targetPage });
+    }
+  },
+  setUpcomingPaymentPage: (page) => {
+    const currentVal = get().currentUpcomingPaymentPage;
+    const upcomingForStore = get().getUpcomingPayments(30); // Use existing selector for count
+    const totalItems = upcomingForStore.length;
+    const itemsPerPageVal = get().itemsPerPage;
+    const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPageVal));
+    let targetPage = page;
+    if (!(targetPage >= 1 && targetPage <= totalPages)) {
+      if (totalItems === 0) { targetPage = 1; }
+      else if (targetPage < 1) { targetPage = 1; }
+      else { targetPage = totalPages; }
+    }
+    if (currentVal !== targetPage) {
+      set({ currentUpcomingPaymentPage: targetPage });
     }
   },
 }));

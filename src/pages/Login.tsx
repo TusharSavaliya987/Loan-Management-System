@@ -64,7 +64,7 @@ const Login = () => {
       toast({
         title: "Login Successful",
         description: "Redirecting to your dashboard...",
-        variant: "success", // Added variant for visual cue
+        variant: "default",
       });
       // No explicit router.push here, relies on isAuthenticated effect.
     } catch (error: any) {
@@ -138,12 +138,6 @@ const Login = () => {
                 </>
               )}
             </Button>
-            <div className="text-center text-sm">
-              Don\'t have an account?{" "}
-              <Link href="/signup" className="underline hover:text-primary">
-                Sign up
-              </Link>
-            </div>
           </CardFooter>
         </form>
       </Card>

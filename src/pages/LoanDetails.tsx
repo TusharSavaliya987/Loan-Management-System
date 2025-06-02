@@ -20,7 +20,10 @@ const LoanDetails = () => {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params?.id;
-  const getLoan = useLoanStore(state => state.getLoan);
+  
+  // Directly select the loan object based on id for reactivity
+  const loan = useLoanStore(state => id ? state.getLoan(id) : null);
+  // getCustomer can remain as is, or also be selected directly if preferred, but loan is primary driver here
   const getCustomer = useLoanStore(state => state.getCustomer);
   const updateLoan = useLoanStore(state => state.updateLoan);
   const markPrincipalPaid = useLoanStore(state => state.markPrincipalPaid);
@@ -28,35 +31,32 @@ const LoanDetails = () => {
   const [closingConfirmOpen, setClosingConfirmOpen] = useState(false);
   const [principalConfirmOpen, setPrincipalConfirmOpen] = useState(false);
   
-  const loan = useMemo(() => {
-    if (!id) return null;
-    return getLoan(id);
-  }, [id, getLoan]);
-  
+  // Customer can still be derived using useMemo if loan might be null initially
   const customer = useMemo(() => {
     if (!loan) return null;
     return getCustomer(loan.customerId);
-  }, [loan, getCustomer]);
+  }, [loan, getCustomer]); // Depends on the reactive 'loan' and stable 'getCustomer'
   
   const pendingInterestPayments = useMemo(() => {
     if (!loan) return [];
     return loan.interestPayments.filter(p => p.status === "pending");
-  }, [loan]);
+  }, [loan]); // Depends on reactive 'loan'
   
   const paidInterestPayments = useMemo(() => {
     if (!loan) return [];
     return loan.interestPayments.filter(p => p.status === "paid");
-  }, [loan]);
+  }, [loan]); // Depends on reactive 'loan'
   
   const totalInterest = useMemo(() => {
     if (!loan) return 0;
     return loan.interestPayments.reduce((sum, payment) => sum + payment.amount, 0);
-  }, [loan]);
+  }, [loan]); // Depends on reactive 'loan'
   
   const paidInterest = useMemo(() => {
     if (!loan) return 0;
-    return paidInterestPayments.reduce((sum, payment) => sum + payment.amount, 0);
-  }, [paidInterestPayments]);
+    // Ensure this uses the updated amountPaid field if available, otherwise fallback to scheduled amount for paid items
+    return paidInterestPayments.reduce((sum, payment) => sum + (payment.amountPaid ?? payment.amount), 0);
+  }, [paidInterestPayments]); // Depends on paidInterestPayments, which depends on reactive 'loan'
   
   const handleExportPDF = () => {
     if (!loan || !customer) return;
@@ -94,7 +94,7 @@ const LoanDetails = () => {
   if (!loan || !customer) {
     return (
       <div className="flex justify-center items-center h-80">
-        <p>Loan not found</p>
+        <p>Loan not found or customer data missing.</p> {/* Slightly more informative message */}
       </div>
     );
   }
@@ -110,7 +110,7 @@ const LoanDetails = () => {
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
               Loan Details
               <Badge variant={loan.status === "active" ? "default" : "secondary"}>
-                {loan.status === "active" ? "Active" : "Closed"}
+                {loan.status === "active" ? "Active" : loan.status.charAt(0).toUpperCase() + loan.status.slice(1) }
               </Badge>
             </h1>
             <p className="text-muted-foreground">Customer: {customer.name}</p>

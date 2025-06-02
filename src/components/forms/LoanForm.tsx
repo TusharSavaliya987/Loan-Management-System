@@ -24,15 +24,15 @@ import {
 import { CustomerInfo, Loan } from "@/types/loan";
 import { useLoanStore } from "@/store/loanStore";
 import { toast } from "sonner";
-import { format, parse } from "date-fns";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { CalendarIcon, FileImage, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { format, parse, parseISO } from "date-fns";
+// import { Calendar } from "@/components/ui/calendar";
+// import {
+//   Popover,
+//   PopoverContent,
+//   PopoverTrigger,
+// } from "@/components/ui/popover";
+// import { CalendarIcon, FileImage, X } from "lucide-react";
+// import { cn } from "@/lib/utils";
 import { useState } from "react";
 
 const formSchema = z.object({
@@ -41,10 +41,11 @@ const formSchema = z.object({
   }),
   principal: z.coerce.number()
     .positive({ message: "Principal amount must be positive" })
-    .min(1, { message: "Principal amount is required" }),
+    .min(1, { message: "Principal amount is required" })
+    .max(1000000000, { message: "Principal amount cannot exceed 1,000,000,000" }),
   interestRate: z.coerce.number()
-    .min(0.01, { message: "Interest rate must be at least 0.01%" })
-    .max(100, { message: "Interest rate cannot exceed 100%" }),
+    .min(1, { message: "Interest rate must be at least 1%" })
+    .max(20, { message: "Interest rate cannot exceed 20%" }),
   startDate: z.date({
     required_error: "Start date is required",
   }),
@@ -67,6 +68,38 @@ export function LoanForm({ onSuccess }: LoanFormProps) {
   const customers = useLoanStore(state => state.customers);
   const addLoan = useLoanStore(state => state.addLoan);
   const isLoading = useLoanStore(state => state.isLoadingLoans);
+  
+  // Handlers for input validation
+  const validatePrincipalInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Allow only positive numbers with max 10 digits (up to 1 billion)
+    if (value && !/^\d{1,10}$/.test(value)) {
+      e.target.value = value.slice(0, 10).replace(/[^0-9]/g, '');
+    }
+  };
+  
+  const validateInterestRateInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Allow numbers between 1-20 with up to 2 decimal places
+    if (value) {
+      const parts = value.split('.');
+      if (parts.length > 1) {
+        // Has decimal point
+        const integerPart = parts[0].replace(/[^0-9]/g, '');
+        const decimalPart = parts[1].replace(/[^0-9]/g, '').slice(0, 2);
+        e.target.value = `${integerPart}.${decimalPart}`;
+      } else {
+        // No decimal point
+        e.target.value = value.replace(/[^0-9]/g, '');
+      }
+      
+      // Check if value is > 20
+      const numValue = parseFloat(e.target.value);
+      if (numValue > 20) {
+        e.target.value = '20';
+      }
+    }
+  };
   
   // State for manual date inputs
   const [startDateInput, setStartDateInput] = useState("");
@@ -135,24 +168,21 @@ export function LoanForm({ onSuccess }: LoanFormProps) {
       
       const newLoan = await addLoan(loanPayload);
       
-      if (newLoan) {
-        toast.success("Loan added successfully");
-        form.reset();
-        setStartDateInput("");
-        setEndDateInput("");
-        setContractNotePreview(null);
-        
-        if (onSuccess) {
-          onSuccess(newLoan);
-        }
-      } else {
-        if (!useLoanStore.getState().error) {
-            toast.error("Failed to add loan. Please check details and try again.");
-        }
+      toast.success("Loan added successfully");
+      
+      // Reset form after successful submission
+      form.reset();
+      setContractNotePreview(null);
+      setStartDateInput("");
+      setEndDateInput("");
+      
+      if (onSuccess) {
+        onSuccess(newLoan);
       }
-    } catch (error: any) {
-      console.error("Failed to add loan (form submission catch):", error);
-      toast.error(error.message || "An unexpected error occurred while submitting the loan form.");
+    } catch (error: Error | unknown) {
+      console.error("Failed to add loan (form submission):", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to add loan. An unexpected error occurred.";
+      toast.error(errorMessage);
     }
   }
 
@@ -219,17 +249,21 @@ export function LoanForm({ onSuccess }: LoanFormProps) {
             <FormItem>
               <FormLabel>Principal Amount (₹)</FormLabel>
               <FormControl>
-                <div className="relative rupee-input">
-                  <Input 
-                    type="number" 
-                    placeholder="Enter principal amount" 
-                    {...field}
-                    onChange={(e) => {
-                      field.onChange(e.target.valueAsNumber);
-                    }}
-                  />
-                </div>
+                <Input 
+                  type="number" 
+                  placeholder="Enter principal amount" 
+                  min="1"
+                  max="1000000000"
+                  onInput={validatePrincipalInput}
+                  {...field}
+                  onChange={(e) => {
+                    field.onChange(e.target.valueAsNumber);
+                  }}
+                />
               </FormControl>
+              <FormDescription>
+                The initial loan amount to be repaid (max 1,000,000,000)
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -246,6 +280,9 @@ export function LoanForm({ onSuccess }: LoanFormProps) {
                   type="number" 
                   step="0.01" 
                   placeholder="Enter interest rate" 
+                  min="1"
+                  max="20"
+                  onInput={validateInterestRateInput}
                   {...field}
                   onChange={(e) => {
                     field.onChange(e.target.valueAsNumber);
@@ -253,7 +290,7 @@ export function LoanForm({ onSuccess }: LoanFormProps) {
                 />
               </FormControl>
               <FormDescription>
-                Annual interest rate in percentage
+                Annual interest rate in percentage (1-20%)
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -268,49 +305,11 @@ export function LoanForm({ onSuccess }: LoanFormProps) {
               <FormItem className="flex flex-col">
                 <FormLabel>Start Date</FormLabel>
                 <div className="grid gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Select date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={(date) => {
-                          field.onChange(date);
-                          if (date) {
-                            setStartDateInput(format(date, "yyyy-MM-dd"));
-                          }
-                        }}
-                        initialFocus
-                        className={cn("p-3 pointer-events-auto")}
-                        captionLayout="dropdown-buttons"
-                        fromYear={2000}
-                        toYear={2100}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  
                   <FormControl>
                     <Input
                       type="date"
-                      value={startDateInput}
-                      onChange={handleManualStartDateChange}
+                      value={field.value ? format(field.value instanceof Date ? field.value : parseISO(field.value as string), 'yyyy-MM-dd') : ''}
+                      onChange={(e) => field.onChange(e.target.value ? parseISO(e.target.value) : null)}
                       placeholder="YYYY-MM-DD"
                     />
                   </FormControl>
@@ -326,54 +325,12 @@ export function LoanForm({ onSuccess }: LoanFormProps) {
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel>End Date</FormLabel>
-                <div className="grid gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Select date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={(date) => {
-                          field.onChange(date);
-                          if (date) {
-                            setEndDateInput(format(date, "yyyy-MM-dd"));
-                          }
-                        }}
-                        initialFocus
-                        disabled={(date) => {
-                          const startDate = form.watch("startDate");
-                          return startDate && date < startDate;
-                        }}
-                        className={cn("p-3 pointer-events-auto")}
-                        captionLayout="dropdown-buttons"
-                        fromYear={2000}
-                        toYear={2100}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  
+                <div className="grid gap-2">                  
                   <FormControl>
                     <Input
                       type="date"
-                      value={endDateInput}
-                      onChange={handleManualEndDateChange}
+                      value={field.value ? format(field.value instanceof Date ? field.value : parseISO(field.value as string), 'yyyy-MM-dd') : ''}
+                      onChange={(e) => field.onChange(e.target.value ? parseISO(e.target.value) : null)}
                       placeholder="YYYY-MM-DD"
                     />
                   </FormControl>

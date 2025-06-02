@@ -2,7 +2,7 @@ import { saveAs } from "file-saver";
 import { utils, write } from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, differenceInMonths } from "date-fns";
 import { CustomerInfo, Loan, InterestPayment } from "@/types/loan";
 
 type LoanWithCustomer = {
@@ -12,8 +12,21 @@ type LoanWithCustomer = {
 
 export const exportLoansToExcel = (loans: LoanWithCustomer[]) => {
   const worksheetData = loans.map(({ loan, customer }) => {
-    const pendingPayments = loan.interestPayments.filter((p) => p.status === "pending").length;
-    const paidPayments = loan.interestPayments.filter((p) => p.status === "paid").length;
+    const pendingPaymentsCount = loan.interestPayments.filter((p) => p.status === "pending").length;
+    const paidPaymentsCount = loan.interestPayments.filter((p) => p.status === "paid").length;
+
+    // Calculate interest amounts for the individual loan
+    const loanTotalInterest = loan.interestPayments.reduce((sum, p) => sum + p.amount, 0);
+    const loanPaidInterest = loan.interestPayments
+      .filter((p) => p.status === "paid")
+      .reduce((sum, p) => sum + (p.amountPaid ?? p.amount), 0);
+    const loanPendingInterest = loanTotalInterest - loanPaidInterest;
+    
+    const totalAmount = loan.principal + loanTotalInterest;
+
+    const startDate = parseISO(loan.startDate);
+    const endDate = parseISO(loan.endDate);
+    const loanDurationInMonths = differenceInMonths(endDate, startDate);
     
     return {
       "Customer Name": customer.name,
@@ -21,37 +34,22 @@ export const exportLoansToExcel = (loans: LoanWithCustomer[]) => {
       "Email": customer.email,
       "Principal (₹)": loan.principal,
       "Interest Rate": `${loan.interestRate}%`,
-      "Start Date": format(parseISO(loan.startDate), "dd/MM/yyyy"),
-      "End Date": format(parseISO(loan.endDate), "dd/MM/yyyy"),
+      "Total Interest (₹)": loanTotalInterest,
+      "Total Amount (₹)": totalAmount,
+      "Start Date": format(startDate, "dd/MM/yyyy"),
+      "End Date": format(endDate, "dd/MM/yyyy"),
       "Payment Frequency": loan.interestFrequency,
       "Status": loan.status,
       "Principal Paid": loan.principalPaid ? "Yes" : "No",
-      "Pending Payments": pendingPayments,
-      "Completed Payments": paidPayments
+      "Pending Payments": pendingPaymentsCount,
+      "Completed Payments": paidPaymentsCount,
+      "Paid Interest (₹)": loanPaidInterest,
+      "Pending Interest (₹)": loanPendingInterest,
+      "Loan Duration (Months)": loanDurationInMonths,
     };
   });
 
-  // Calculate total interest and paid interest
-  let totalInterest = 0;
-  let paidInterest = 0;
-
-  loans.forEach(({ loan }) => {
-    loan.interestPayments.forEach(payment => {
-      totalInterest += payment.amount;
-      if (payment.status === "paid") {
-        paidInterest += payment.amount;
-      }
-    });
-  });
-
   const worksheet = utils.json_to_sheet(worksheetData);
-
-  // Add summary rows
-  // Adding an empty row for spacing
-  utils.sheet_add_aoa(worksheet, [[]], { origin: -1 }); 
-  utils.sheet_add_aoa(worksheet, [["Total Interest (₹):", totalInterest]], { origin: -1 });
-  utils.sheet_add_aoa(worksheet, [["Paid Interest (₹):", paidInterest]], { origin: -1 });
-  utils.sheet_add_aoa(worksheet, [["Pending Interest (₹):", totalInterest - paidInterest]], { origin: -1 });
 
   const workbook = utils.book_new();
   utils.book_append_sheet(workbook, worksheet, "Loans");
@@ -105,7 +103,7 @@ export const exportInterestPaymentsToPDF = (
   const totalInterest = loan.interestPayments.reduce((sum, p) => sum + p.amount, 0);
   const paidInterest = loan.interestPayments
     .filter((p) => p.status === "paid")
-    .reduce((sum, p) => sum + p.amount, 0);
+    .reduce((sum, p) => sum + (p.amountPaid ?? p.amount), 0);
     
   const finalY = (doc as any).lastAutoTable.finalY + 10;
   

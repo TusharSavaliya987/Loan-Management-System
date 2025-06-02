@@ -12,13 +12,14 @@ export type PaymentStatus = "pending" | "paid" | "overdue";
 export type InterestPayment = {
   id: string;
   dueDate: string; // ISO string
-  amount: number;
+  amount: number; // Scheduled amount
   status: PaymentStatus;
   paidOn?: string; // ISO string, optional
   periodStart?: string; // ISO string, start date of the interest period
   periodEnd?: string; // ISO string, end date of the interest period
   remarks?: string; // Optional remarks for the payment
-  isManualAmount?: boolean; // Flag to indicate if amount was manually entered
+  isManualAmount?: boolean; // Flag to indicate if amount was manually entered at time of scheduling
+  amountPaid?: number; // Optional: The actual amount paid, can differ from scheduled amount
 };
 
 export type Loan = {

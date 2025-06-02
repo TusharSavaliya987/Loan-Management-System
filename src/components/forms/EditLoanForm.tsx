@@ -41,10 +41,11 @@ const formSchema = z.object({
   }),
   principal: z.coerce.number()
     .positive({ message: "Principal amount must be positive" })
-    .min(1, { message: "Principal amount is required" }),
+    .min(1, { message: "Principal amount is required" })
+    .max(1000000000, { message: "Principal amount cannot exceed 1,000,000,000" }),
   interestRate: z.coerce.number()
-    .min(0.01, { message: "Interest rate must be at least 0.01%" })
-    .max(100, { message: "Interest rate cannot exceed 100%" }),
+    .min(1, { message: "Interest rate must be at least 1%" })
+    .max(20, { message: "Interest rate cannot exceed 20%" }),
   startDate: z.date({
     required_error: "Start date is required",
   }),
@@ -68,6 +69,38 @@ export function EditLoanForm({ loan, onSuccess }: EditLoanFormProps) {
   const updateLoan = useLoanStore(state => state.updateLoan);
   const getLoanById = useLoanStore(state => state.getLoan);
   const isLoading = useLoanStore(state => state.isLoadingLoans);
+  
+  // Handlers for input validation
+  const validatePrincipalInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Allow only positive numbers with max 10 digits (up to 1 billion)
+    if (value && !/^\d{1,10}$/.test(value)) {
+      e.target.value = value.slice(0, 10).replace(/[^0-9]/g, '');
+    }
+  };
+  
+  const validateInterestRateInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Allow numbers between 1-20 with up to 2 decimal places
+    if (value) {
+      const parts = value.split('.');
+      if (parts.length > 1) {
+        // Has decimal point
+        const integerPart = parts[0].replace(/[^0-9]/g, '');
+        const decimalPart = parts[1].replace(/[^0-9]/g, '').slice(0, 2);
+        e.target.value = `${integerPart}.${decimalPart}`;
+      } else {
+        // No decimal point
+        e.target.value = value.replace(/[^0-9]/g, '');
+      }
+      
+      // Check if value is > 20
+      const numValue = parseFloat(e.target.value);
+      if (numValue > 20) {
+        e.target.value = '20';
+      }
+    }
+  };
   
   // State for manual date inputs
   const [startDateInput, setStartDateInput] = useState(loan.startDate);
@@ -172,17 +205,18 @@ export function EditLoanForm({ loan, onSuccess }: EditLoanFormProps) {
             <FormItem>
               <FormLabel>Principal Amount (₹)</FormLabel>
               <FormControl>
-                <div className="relative rupee-input">
-                  <Input 
-                    type="number" 
-                    placeholder="Enter principal amount" 
-                    {...field}
-                    onChange={(e) => {
-                      field.onChange(e.target.valueAsNumber);
-                    }}
-                  />
-                </div>
+                <Input
+                  type="number"
+                  placeholder="Enter loan amount"
+                  {...field}
+                  min="1"
+                  max="1000000000"
+                  onInput={validatePrincipalInput}
+                />
               </FormControl>
+              <FormDescription>
+                The initial loan amount to be repaid (max 1,000,000,000)
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -195,18 +229,18 @@ export function EditLoanForm({ loan, onSuccess }: EditLoanFormProps) {
             <FormItem>
               <FormLabel>Annual Interest Rate (%)</FormLabel>
               <FormControl>
-                <Input 
-                  type="number" 
-                  step="0.01" 
-                  placeholder="Enter interest rate" 
+                <Input
+                  type="number"
+                  placeholder="Enter interest rate"
+                  step="0.01"
+                  min="1"
+                  max="20"
+                  onInput={validateInterestRateInput}
                   {...field}
-                  onChange={(e) => {
-                    field.onChange(e.target.valueAsNumber);
-                  }}
                 />
               </FormControl>
               <FormDescription>
-                Annual interest rate in percentage
+                Annual interest rate as a percentage (1-20%)
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -221,7 +255,7 @@ export function EditLoanForm({ loan, onSuccess }: EditLoanFormProps) {
               <FormItem className="flex flex-col">
                 <FormLabel>Start Date</FormLabel>
                 <div className="grid gap-2">
-                  <Popover>
+                  {/* <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
@@ -257,7 +291,7 @@ export function EditLoanForm({ loan, onSuccess }: EditLoanFormProps) {
                         toYear={2100}
                       />
                     </PopoverContent>
-                  </Popover>
+                  </Popover> */}
                   
                   <FormControl>
                     <Input
@@ -280,48 +314,6 @@ export function EditLoanForm({ loan, onSuccess }: EditLoanFormProps) {
               <FormItem className="flex flex-col">
                 <FormLabel>End Date</FormLabel>
                 <div className="grid gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Select date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={(date) => {
-                          field.onChange(date);
-                          if (date) {
-                            setEndDateInput(format(date, "yyyy-MM-dd"));
-                          }
-                        }}
-                        initialFocus
-                        disabled={(date) => {
-                          const startDate = form.watch("startDate");
-                          return startDate && date < startDate;
-                        }}
-                        className={cn("p-3 pointer-events-auto")}
-                        captionLayout="dropdown-buttons"
-                        fromYear={2000}
-                        toYear={2100}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  
                   <FormControl>
                     <Input
                       type="date"
