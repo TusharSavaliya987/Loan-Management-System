@@ -103,6 +103,7 @@ interface LoanState {
   deleteLoanSoft: (loanId: string) => Promise<void>;
   restoreLoan: (loanId: string) => Promise<void>;
   permanentlyDeleteOldSoftDeletedLoans: (daysToExpire: number) => Promise<void>;
+  permanentlyDeleteLoan: (loanId: string) => Promise<void>;
 
   // Pagination actions
   setLoanPage: (page: number) => void;
@@ -478,6 +479,27 @@ export const useLoanStore = create<LoanState>((set, get) => ({
     } finally {
       set({ isLoadingLoans: false });
     }
+  },
+
+  permanentlyDeleteLoan: async (loanId: string) => {
+    set({ isLoadingLoans: true, error: null });
+    try {
+      await apiClient(`loans/${loanId}/permanently-delete`, 'DELETE');
+      // Successfully deleted, now update local state by removing the loan or re-fetching
+      // Re-fetching is often simpler and ensures consistency
+      await get().fetchLoans(); 
+      // Or, to update locally without re-fetching:
+      // set(state => ({
+      //   loans: state.loans.filter(loan => loan.id !== loanId),
+      //   isLoadingLoans: false,
+      // }));
+    } catch (err: any) {
+      console.error("Error permanently deleting loan via API:", err);
+      set({ error: "Failed to permanently delete loan. " + (err.message || 'Unknown error'), isLoadingLoans: false });
+      throw err; // Re-throw the error so the component can catch it for toast notifications
+    }
+    // isLoadingLoans will be set to false by fetchLoans if that's called.
+    // If updating locally, ensure it's set to false here.
   },
 
   // Pagination Actions with defensive set

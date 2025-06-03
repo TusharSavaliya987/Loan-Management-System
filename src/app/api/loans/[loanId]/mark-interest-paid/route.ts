@@ -10,9 +10,9 @@ interface MarkInterestPaidRequestBody {
   amount?: number; // Optional: manually entered paid amount
 }
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: { loanId: string } }) { // Changed id to loanId
   if (!firebaseAdminAuth || !db) {
-    console.error("API Error: Firebase Admin SDK not initialized for PATCH /api/loans/[id]/mark-interest-paid. Check server logs.");
+    console.error("API Error: Firebase Admin SDK not initialized for PATCH /api/loans/[loanId]/mark-interest-paid. Check server logs."); // Updated path in log
     return NextResponse.json({ message: "Server configuration error." }, { status: 500 });
   }
 
@@ -27,7 +27,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const decodedClaims = await firebaseAdminAuth.verifySessionCookie(sessionCookie, true /* checkRevoked */);
     const userId = decodedClaims.uid;
     
-    const loanId = params.id;
+    const { loanId } = params; // Destructure loanId from params
 
     if (!loanId) {
       return NextResponse.json({ message: 'Loan ID is required.' }, { status: 400 });
@@ -100,7 +100,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return NextResponse.json(updatedLoanData);
 
   } catch (error: any) {
-    console.error('Error in PATCH /api/loans/[id]/mark-interest-paid:', error);
+    console.error('Error in PATCH /api/loans/[loanId]/mark-interest-paid:', error); // Updated path in log
     if (error.code === 'auth/session-cookie-expired' || error.code === 'auth/session-cookie-revoked' || error.code === 'auth/argument-error') {
       const response = NextResponse.json({ message: 'Authentication error: ' + error.message }, { status: 401 });
       // Clear the invalid session cookie

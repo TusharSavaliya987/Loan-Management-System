@@ -6,13 +6,25 @@ import { useLoanStore } from "@/store/loanStore";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { format, parseISO, differenceInDays } from "date-fns";
-import { ArrowLeft, Trash, RefreshCcw } from "lucide-react";
+import { ArrowLeft, Trash, RefreshCcw, AlertTriangle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Loan as LoanType } from "@/types/loan";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const DeletedLoans = () => {
   const loans = useLoanStore(state => state.loans);
   const restoreLoan = useLoanStore(state => state.restoreLoan);
+  const permanentlyDeleteLoan = useLoanStore(state => state.permanentlyDeleteLoan);
   const getCustomer = useLoanStore(state => state.getCustomer);
   const getStoreError = useLoanStore(state => state.error);
 
@@ -37,6 +49,24 @@ const DeletedLoans = () => {
         variant: "destructive",
         title: "Restore failed",
         description: storeError || "Could not restore the loan. Please try again.",
+      });
+    }
+  };
+
+  const handlePermanentDelete = async (loanId: string) => {
+    try {
+      await permanentlyDeleteLoan(loanId);
+      toast({
+        title: "Loan Permanently Deleted",
+        description: "The loan has been successfully removed from the database.",
+      });
+    } catch (error: any) {
+      console.error("Permanent delete failed in component:", error);
+      const storeError = getStoreError;
+      toast({
+        variant: "destructive",
+        title: "Permanent Delete Failed",
+        description: storeError || error.message || "Could not permanently delete the loan. Please try again.",
       });
     }
   };
@@ -99,14 +129,42 @@ const DeletedLoans = () => {
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="flex flex-col sm:flex-row gap-2 sm:justify-between sm:items-center">
                   <Button 
                     onClick={() => handleRestore(loan.id)} 
-                    className="w-full"
+                    className="w-full sm:w-auto flex items-center"
                     variant="outline"
                   >
                     <RefreshCcw className="mr-2 h-4 w-4" /> Restore Loan
                   </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button 
+                        variant="destructive" 
+                        className="w-full sm:w-auto flex items-center justify-center gap-2"
+                      >
+                        <Trash className="mr-2 h-4 w-4" /> Permanently Delete
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center">
+                          <AlertTriangle className="mr-2 h-5 w-5 text-destructive" />
+                          Confirm Permanent Deletion
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to permanently delete the loan for "{customer?.name || 'Unknown Customer'}"? 
+                          This action cannot be undone and the loan data will be completely removed.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handlePermanentDelete(loan.id)} className="bg-destructive hover:bg-destructive/90 flex flex-col sm:flex-row gap-2">
+                          Delete Permanently
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </CardFooter>
               </Card>
             );

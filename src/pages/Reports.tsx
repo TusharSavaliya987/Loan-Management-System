@@ -82,7 +82,7 @@ const Reports = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{stats.activeLoansCount}</p>
+            <p className="text-xl sm:text-xl md:text-xl font-bold flex items-center">{stats.activeLoansCount}</p>
           </CardContent>
         </Card>
         
@@ -93,7 +93,7 @@ const Reports = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{stats.closedLoansCount}</p>
+            <p className="text-xl sm:text-xl md:text-xl font-bold flex items-center">{stats.closedLoansCount}</p>
           </CardContent>
         </Card>
         
@@ -104,7 +104,7 @@ const Reports = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold flex items-center">
+            <p className="text-xl sm:text-xl md:text-xl font-bold flex items-center">
               <IndianRupee className="h-5 w-5 mr-1" />
               {stats.totalPrincipal.toLocaleString('en-IN')}
             </p>
@@ -118,7 +118,7 @@ const Reports = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold flex items-center">
+            <p className="text-xl sm:text-xl md:text-xl font-bold flex items-center">
               <IndianRupee className="h-5 w-5 mr-1" />
               {stats.paidInterest.toLocaleString('en-IN')}
             </p>
