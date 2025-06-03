@@ -129,10 +129,10 @@ const DeletedLoans = () => {
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter className="flex flex-col sm:flex-row gap-2 sm:justify-between sm:items-center">
+                <CardFooter className="w-full flex-wrap flex-col  sm:flex-row gap-2 sm:justify-between sm:items-center">
                   <Button 
                     onClick={() => handleRestore(loan.id)} 
-                    className="w-full sm:w-auto flex items-center"
+                    className="w-full  flex items-center"
                     variant="outline"
                   >
                     <RefreshCcw className="mr-2 h-4 w-4" /> Restore Loan
@@ -141,7 +141,7 @@ const DeletedLoans = () => {
                     <AlertDialogTrigger asChild>
                       <Button 
                         variant="destructive" 
-                        className="w-full sm:w-auto flex items-center justify-center gap-2"
+                        className="w-full  items-center justify-center"
                       >
                         <Trash className="mr-2 h-4 w-4" /> Permanently Delete
                       </Button>
