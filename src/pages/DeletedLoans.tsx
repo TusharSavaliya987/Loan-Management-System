@@ -68,7 +68,7 @@ const DeletedLoans = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {deletedLoansArray.map((loan) => {
             const customer = getCustomer(loan.customerId);
             const daysLeft = calculateDaysLeft(loan.deletedAt);
@@ -82,18 +82,18 @@ const DeletedLoans = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span>Loan Amount:</span>
-                      <span>₹{loan.principal.toLocaleString()}</span>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex flex-col sm:flex-row sm:justify-between">
+                      <span className="text-muted-foreground">Loan Amount:</span>
+                      <span className="font-medium sm:text-right">₹{loan.principal.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Interest Rate:</span>
-                      <span>{loan.interestRate}%</span>
+                    <div className="flex flex-col sm:flex-row sm:justify-between">
+                      <span className="text-muted-foreground">Interest Rate:</span>
+                      <span className="font-medium sm:text-right">{loan.interestRate}%</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Expiry:</span>
-                      <span className="text-destructive font-semibold">
+                    <div className="flex flex-col sm:flex-row sm:justify-between">
+                      <span className="text-muted-foreground">Expiry:</span>
+                      <span className="text-destructive font-semibold sm:text-right">
                         {daysLeft} days left to restore
                       </span>
                     </div>

@@ -174,8 +174,8 @@ const LoanDetails = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <Card className="xl:col-span-1">
           <CardHeader>
             <CardTitle>Loan Summary</CardTitle>
             <CardDescription>Details of the loan and customer</CardDescription>
@@ -195,32 +195,32 @@ const LoanDetails = () => {
             <div>
               <h3 className="font-medium mb-2">Loan Information</h3>
               <div className="space-y-1 text-sm">
-                <p className="flex items-center justify-between">
+                <p className="flex flex-col sm:flex-row sm:justify-between">
                   <span className="text-muted-foreground">Principal:</span>
-                  <span className="font-medium flex items-center">
+                  <span className="font-medium flex items-center sm:text-right">
                     <IndianRupee className="h-3 w-3 mr-1" />
                     {loan.principal.toLocaleString('en-IN')}
                   </span>
                 </p>
-                <p className="flex justify-between">
+                <p className="flex flex-col sm:flex-row sm:justify-between">
                   <span className="text-muted-foreground">Interest Rate:</span>
-                  <span className="font-medium">{loan.interestRate}% p.a.</span>
+                  <span className="font-medium sm:text-right">{loan.interestRate}% p.a.</span>
                 </p>
-                <p className="flex justify-between">
+                <p className="flex flex-col sm:flex-row sm:justify-between">
                   <span className="text-muted-foreground">Start Date:</span>
-                  <span className="font-medium">{format(parseISO(loan.startDate), "dd MMM yyyy")}</span>
+                  <span className="font-medium sm:text-right">{format(parseISO(loan.startDate), "dd MMM yyyy")}</span>
                 </p>
-                <p className="flex justify-between">
+                <p className="flex flex-col sm:flex-row sm:justify-between">
                   <span className="text-muted-foreground">End Date:</span>
-                  <span className="font-medium">{format(parseISO(loan.endDate), "dd MMM yyyy")}</span>
+                  <span className="font-medium sm:text-right">{format(parseISO(loan.endDate), "dd MMM yyyy")}</span>
                 </p>
-                <p className="flex justify-between">
+                <p className="flex flex-col sm:flex-row sm:justify-between">
                   <span className="text-muted-foreground">Payment Frequency:</span>
-                  <span className="font-medium capitalize">{loan.interestFrequency}</span>
+                  <span className="font-medium capitalize sm:text-right">{loan.interestFrequency}</span>
                 </p>
-                <p className="flex justify-between">
+                <p className="flex flex-col sm:flex-row sm:justify-between">
                   <span className="text-muted-foreground">Principal Status:</span>
-                  <Badge variant="outline" className={loan.principalPaid ? "bg-green-50" : ""}>
+                  <Badge variant="outline" className={`${loan.principalPaid ? "bg-green-50" : ""} sm:ml-auto`}>
                     {loan.principalPaid ? "Paid" : "Outstanding"}
                   </Badge>
                 </p>
@@ -232,37 +232,37 @@ const LoanDetails = () => {
             <div>
               <h3 className="font-medium mb-2">Payment Summary</h3>
               <div className="space-y-1 text-sm">
-                <p className="flex justify-between">
+                <p className="flex flex-col sm:flex-row sm:justify-between">
                   <span className="text-muted-foreground">Total Interest:</span>
-                  <span className="font-medium flex items-center">
+                  <span className="font-medium flex items-center sm:text-right">
                     <IndianRupee className="h-3 w-3 mr-1" />
                     {totalInterest.toLocaleString('en-IN')}
                   </span>
                 </p>
-                <p className="flex justify-between">
+                <p className="flex flex-col sm:flex-row sm:justify-between">
                   <span className="text-muted-foreground">Paid Interest:</span>
-                  <span className="font-medium flex items-center">
+                  <span className="font-medium flex items-center sm:text-right">
                     <IndianRupee className="h-3 w-3 mr-1" />
                     {paidInterest.toLocaleString('en-IN')}
                   </span>
                 </p>
-                <p className="flex justify-between">
+                <p className="flex flex-col sm:flex-row sm:justify-between">
                   <span className="text-muted-foreground">Pending Interest:</span>
-                  <span className="font-medium flex items-center">
+                  <span className="font-medium flex items-center sm:text-right">
                     <IndianRupee className="h-3 w-3 mr-1" />
                     {(totalInterest - paidInterest).toLocaleString('en-IN')}
                   </span>
                 </p>
-                <p className="flex justify-between">
+                <p className="flex flex-col sm:flex-row sm:justify-between">
                   <span className="text-muted-foreground">Paid Installments:</span>
-                  <span className="font-medium">{paidInterestPayments.length} of {loan.interestPayments.length}</span>
+                  <span className="font-medium sm:text-right">{paidInterestPayments.length} of {loan.interestPayments.length}</span>
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card className="lg:col-span-2">
+        <Card className="xl:col-span-2">
           <CardHeader>
             <CardTitle>Interest Payments</CardTitle>
             <CardDescription>Track all interest payments for this loan</CardDescription>

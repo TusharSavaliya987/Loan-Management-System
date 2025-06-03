@@ -188,9 +188,9 @@ export const useLoanStore = create<LoanState>((set, get) => ({
       currentUpcomingPaymentPage: 1
     }); 
     try {
-      // Assuming an endpoint 'loans' that filters by status != 'permanently_deleted' on backend
+      // Assuming an endpoint '/api/loans' that filters by status != 'permanently_deleted' on backend
       const loansData = await apiClient<Loan[]>('loans', 'GET');
-      set({ loans: loansData || [], isLoadingLoans: false });
+      set({ loans: loansData || [], isLoadingLoans: false });``
     } catch (err: any) {
       console.error("Error fetching loans via API:", err);
       set({ error: "Failed to load loans. " + (err.message || ''), isLoadingLoans: false });

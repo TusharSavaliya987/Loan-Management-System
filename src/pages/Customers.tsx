@@ -73,7 +73,7 @@ const Customers = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredCustomers.map(customer => {
             const activeLoansCount = getActiveLoansCount(customer.id);
             
@@ -92,13 +92,13 @@ const Customers = () => {
                     </div>
                     
                     <div className="space-y-2">
-                      <div className="text-sm flex justify-between">
+                      <div className="text-sm flex flex-col sm:flex-row sm:justify-between">
                         <span className="text-muted-foreground">Email:</span>
-                        <span>{customer.email}</span>
+                        <span className="sm:text-right truncate">{customer.email}</span>
                       </div>
-                      <div className="text-sm flex justify-between">
+                      <div className="text-sm flex flex-col sm:flex-row sm:justify-between">
                         <span className="text-muted-foreground">Active Loans:</span>
-                        <span>{activeLoansCount}</span>
+                        <span className="sm:text-right">{activeLoansCount}</span>
                       </div>
                     </div>
                   </div>

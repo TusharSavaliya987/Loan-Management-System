@@ -1,14 +1,32 @@
-
 import { format, parseISO } from "date-fns";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { InterestPayment, Loan } from "@/types/loan";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { useState } from "react";
 import { CalendarIcon, IndianRupee } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useLoanStore } from "@/store/loanStore";
 import { toast } from "sonner";
@@ -22,27 +40,30 @@ interface PaymentTableProps {
 }
 
 export function PaymentTable({ loan }: PaymentTableProps) {
-  const [selectedPayment, setSelectedPayment] = useState<InterestPayment | null>(null);
+  const [selectedPayment, setSelectedPayment] =
+    useState<InterestPayment | null>(null);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [open, setOpen] = useState(false);
   const [remarks, setRemarks] = useState("");
-  const [manualAmount, setManualAmount] = useState<number | undefined>(undefined);
+  const [manualAmount, setManualAmount] = useState<number | undefined>(
+    undefined
+  );
   const [useManualAmount, setUseManualAmount] = useState(false);
-  
-  const markInterestPaid = useLoanStore(state => state.markInterestPaid);
-  
+
+  const markInterestPaid = useLoanStore((state) => state.markInterestPaid);
+
   const handleMarkPaid = () => {
     if (!selectedPayment || !date) return;
-    
+
     try {
       markInterestPaid(
-        loan.id, 
-        selectedPayment.id, 
-        format(date, "yyyy-MM-dd"), 
+        loan.id,
+        selectedPayment.id,
+        format(date, "yyyy-MM-dd"),
         remarks || undefined,
         useManualAmount ? manualAmount : undefined
       );
-      
+
       toast.success("Payment marked as paid");
       setOpen(false);
       resetForm();
@@ -51,33 +72,41 @@ export function PaymentTable({ loan }: PaymentTableProps) {
       console.error(error);
     }
   };
-  
+
   const resetForm = () => {
     setRemarks("");
     setManualAmount(undefined);
     setUseManualAmount(false);
     setSelectedPayment(null);
   };
-  
+
   const openDialog = (payment: InterestPayment) => {
     setSelectedPayment(payment);
     setManualAmount(payment.amount);
     setOpen(true);
   };
-  
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "paid":
-        return <Badge variant="outline" className="bg-green-50">Paid</Badge>;
+        return (
+          <Badge variant="outline" className="bg-green-50">
+            Paid
+          </Badge>
+        );
       case "pending":
-        return <Badge variant="outline" className="bg-yellow-50">Pending</Badge>;
+        return (
+          <Badge variant="outline" className="bg-yellow-50">
+            Pending
+          </Badge>
+        );
       case "overdue":
         return <Badge variant="destructive">Overdue</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
   };
-  
+
   return (
     <>
       <Table>
@@ -100,40 +129,50 @@ export function PaymentTable({ loan }: PaymentTableProps) {
               <TableCell className="whitespace-nowrap">
                 {payment.periodStart && payment.periodEnd ? (
                   <span className="text-xs">
-                    {format(parseISO(payment.periodStart), "dd MMM yyyy")} - {format(parseISO(payment.periodEnd), "dd MMM yyyy")}
+                    {format(parseISO(payment.periodStart), "dd MMM yyyy")} -{" "}
+                    {format(parseISO(payment.periodEnd), "dd MMM yyyy")}
                   </span>
                 ) : (
                   "-"
                 )}
               </TableCell>
-              <TableCell>{format(parseISO(payment.dueDate), "dd MMM yyyy")}</TableCell>
+              <TableCell>
+                {format(parseISO(payment.dueDate), "dd MMM yyyy")}
+              </TableCell>
               <TableCell>
                 <div className="flex items-center">
                   <IndianRupee className="h-3 w-3 mr-1" />
-                  {payment.amount.toLocaleString('en-IN')}
+                  {payment.amount.toLocaleString("en-IN")}
                   {payment.isManualAmount && (
-                    <Badge variant="outline" className="ml-1 text-xs py-0 px-1">Manual</Badge>
+                    <Badge variant="outline" className="ml-1 text-xs py-0 px-1">
+                      Manual
+                    </Badge>
                   )}
                 </div>
               </TableCell>
               <TableCell>{getStatusBadge(payment.status)}</TableCell>
               <TableCell>
-                {payment.paidOn ? format(parseISO(payment.paidOn), "dd MMM yyyy") : "-"}
+                {payment.paidOn
+                  ? format(parseISO(payment.paidOn), "dd MMM yyyy")
+                  : "-"}
               </TableCell>
               <TableCell className="max-w-[150px] truncate">
                 {payment.remarks || "-"}
               </TableCell>
               <TableCell className="text-right">
                 {payment.status === "pending" && loan.status === "active" && (
-                  <Dialog open={open && selectedPayment?.id === payment.id} onOpenChange={(value) => {
-                    if (!value) {
-                      resetForm();
-                    }
-                    setOpen(value);
-                  }}>
+                  <Dialog
+                    open={open && selectedPayment?.id === payment.id}
+                    onOpenChange={(value) => {
+                      if (!value) {
+                        resetForm();
+                      }
+                      setOpen(value);
+                    }}
+                  >
                     <DialogTrigger asChild>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => openDialog(payment)}
                       >
@@ -144,11 +183,23 @@ export function PaymentTable({ loan }: PaymentTableProps) {
                       <DialogHeader>
                         <DialogTitle>Mark Payment as Paid</DialogTitle>
                         <DialogDescription>
-                          Mark the interest payment for period {payment.periodStart && payment.periodEnd ? (
+                          Mark the interest payment for period{" "}
+                          {payment.periodStart && payment.periodEnd ? (
                             <span>
-                              {format(parseISO(payment.periodStart), "dd MMM yyyy")} - {format(parseISO(payment.periodEnd), "dd MMM yyyy")}
+                              {format(
+                                parseISO(payment.periodStart),
+                                "dd MMM yyyy"
+                              )}{" "}
+                              -{" "}
+                              {format(
+                                parseISO(payment.periodEnd),
+                                "dd MMM yyyy"
+                              )}
                             </span>
-                          ) : 'current period'} as paid.
+                          ) : (
+                            "current period"
+                          )}{" "}
+                          as paid.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="py-4 space-y-4">
@@ -163,11 +214,18 @@ export function PaymentTable({ loan }: PaymentTableProps) {
                                   !date && "text-muted-foreground"
                                 )}
                               >
-                                {date ? format(date, "PPP") : <span>Pick a date</span>}
+                                {date ? (
+                                  format(date, "PPP")
+                                ) : (
+                                  <span>Pick a date</span>
+                                )}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                               </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
+                            <PopoverContent
+                              className="w-auto p-0"
+                              align="start"
+                            >
                               <Calendar
                                 mode="single"
                                 selected={date}
@@ -178,55 +236,71 @@ export function PaymentTable({ loan }: PaymentTableProps) {
                             </PopoverContent>
                           </Popover>
                         </div>
-                        
+
                         <div className="flex items-center space-x-2 pb-2">
-                          <Checkbox 
-                            id="useManualAmount" 
-                            checked={useManualAmount} 
+                          <Checkbox
+                            id="useManualAmount"
+                            checked={useManualAmount}
                             onCheckedChange={(checked) => {
                               setUseManualAmount(checked === true);
                               if (!checked) {
                                 setManualAmount(selectedPayment?.amount);
                               }
-                            }} 
+                            }}
                           />
-                          <Label htmlFor="useManualAmount">Modify interest amount</Label>
+                          <Label htmlFor="useManualAmount">
+                            Modify interest amount
+                          </Label>
                         </div>
-                        
+
                         <div className="space-y-2">
                           <Label>Amount</Label>
                           <div className="flex items-center relative">
                             <IndianRupee className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                            <Input 
+                            <Input
                               type="number"
                               className="pl-8"
                               value={manualAmount}
                               disabled={!useManualAmount}
-                              onChange={(e) => setManualAmount(parseFloat(e.target.value))}
+                              onChange={(e) =>
+                                setManualAmount(parseFloat(e.target.value))
+                              }
                             />
                           </div>
                           {useManualAmount && (
                             <p className="text-xs text-muted-foreground">
-                              Default calculated amount: ₹{selectedPayment?.amount.toLocaleString('en-IN')}
+                              Default calculated amount: ₹
+                              {selectedPayment?.amount.toLocaleString("en-IN")}
                             </p>
                           )}
                         </div>
-                        
+
                         <div className="space-y-2">
                           <Label>Remarks (optional)</Label>
-                          <Textarea 
+                          <Textarea
                             placeholder="Add any notes about this payment"
                             value={remarks}
                             onChange={(e) => setRemarks(e.target.value)}
                           />
                         </div>
                       </div>
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => {
-                          setOpen(false);
-                          resetForm();
-                        }}>Cancel</Button>
-                        <Button onClick={handleMarkPaid}>Confirm</Button>
+                      <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-end">
+                        <Button
+                          variant="outline"
+                          className="w-full sm:w-auto"
+                          onClick={() => {
+                            setOpen(false);
+                            resetForm();
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          className="w-full sm:w-auto"
+                          onClick={handleMarkPaid}
+                        >
+                          Confirm
+                        </Button>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>

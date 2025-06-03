@@ -14,11 +14,16 @@ export function UpcomingPayments() {
   const upcomingPayments = useMemo(() => getUpcomingPayments(30), [getUpcomingPayments]);
   
   return (
-    <Card className="col-span-1 lg:col-span-2">
-      <CardHeader>
-        <CardTitle>Upcoming Payments (Next 30 Days)</CardTitle>
-        <CardDescription>Interest payments due within the next month</CardDescription>
+    <Card className="col-span-1 2xl:col-span-2">
+      <CardHeader className="space-y-1 sm:space-y-2">
+        <CardTitle className="text-base sm:text-lg md:text-xl lg:text-xl font-semibold">
+          Upcoming Payments (Next 30 Days)
+        </CardTitle>
+        <CardDescription className="text-xs sm:text-sm md:text-base text-muted-foreground">
+          Interest payments due within the next month
+        </CardDescription>
       </CardHeader>
+
       <CardContent>
         {upcomingPayments.length === 0 ? (
           <p className="text-center text-muted-foreground py-6">No upcoming payments in the next 30 days</p>
