@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import Link from "next/link"; // For Signup link
+
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -91,10 +91,10 @@ const Login = () => {
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label> {/* Changed from username */}
+              <Label htmlFor="email">Email</Label> 
               <Input
                 id="email"
-                type="email" // Changed from text
+                type="email" 
                 placeholder="user@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}

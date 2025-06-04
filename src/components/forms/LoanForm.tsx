@@ -79,24 +79,56 @@ export function LoanForm({ onSuccess }: LoanFormProps) {
   };
   
   const validateInterestRateInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    // Allow numbers between 1-20 with up to 2 decimal places
-    if (value) {
-      const parts = value.split('.');
-      if (parts.length > 1) {
-        // Has decimal point
-        const integerPart = parts[0].replace(/[^0-9]/g, '');
-        const decimalPart = parts[1].replace(/[^0-9]/g, '').slice(0, 2);
-        e.target.value = `${integerPart}.${decimalPart}`;
-      } else {
-        // No decimal point
-        e.target.value = value.replace(/[^0-9]/g, '');
+    let value = e.target.value;
+    const originalValue = value; 
+    const selectionStart = e.target.selectionStart; 
+
+    // 1. Allow only digits and decimal points initially
+    value = value.replace(/[^0-9.]/g, "");
+
+    // 2. Ensure only one decimal point (keep the first one if multiple were typed/pasted)
+    const firstDotPosition = value.indexOf('.');
+    if (firstDotPosition !== -1) {
+      value = value.substring(0, firstDotPosition + 1) + value.substring(firstDotPosition + 1).replace(/\./g, '');
+    }
+
+    // 3. Limit to two decimal places
+    const parts = value.split('.'); 
+    if (parts.length > 1 && parts[1] && parts[1].length > 2) {
+      value = parts[0] + '.' + parts[1].substring(0, 2);
+    }
+    
+    // 4. Max value check (up to "20.xx"). Min value (1) is handled by Zod.
+    // Allows "0", "0.", "." as intermediate.
+    if (value !== "" && value !== "." ) { 
+      if (!value.endsWith('.')) { // Only parse if not ending with a dot (e.g. "1." is allowed)
+          const numValue = parseFloat(value);
+          if (!isNaN(numValue)) { 
+              if (numValue > 20) {
+                  value = "20";
+              } else if (numValue < 0) { 
+                  value = ""; 
+              }
+          }
+      } else { // Value ends with a dot, e.g., "123." or "30."
+          if (value.length > 1) { // Avoid parsing just "."
+            const numPartBeforeDot = parseFloat(parts[0]);
+            if (!isNaN(numPartBeforeDot)) {
+                if (numPartBeforeDot > 20) {
+                    value = "20."; 
+                } else if (numPartBeforeDot < 0) {
+                    value = "0."; // Or "" or "." depending on desired behavior
+                }
+            }
+          }
       }
-      
-      // Check if value is > 20
-      const numValue = parseFloat(e.target.value);
-      if (numValue > 20) {
-        e.target.value = '20';
+    }
+
+    if (value !== originalValue) {
+      e.target.value = value;
+      if (selectionStart !== null) {
+        const diff = originalValue.length - value.length;
+        e.target.setSelectionRange(selectionStart - diff, selectionStart - diff);
       }
     }
   };
@@ -277,20 +309,16 @@ export function LoanForm({ onSuccess }: LoanFormProps) {
               <FormLabel>Annual Interest Rate (%)</FormLabel>
               <FormControl>
                 <Input 
-                  type="number" 
-                  step="0.01" 
+                  type="text" 
+                  inputMode="decimal"
                   placeholder="Enter interest rate" 
-                  min="1"
-                  max="20"
                   onInput={validateInterestRateInput}
                   {...field}
-                  onChange={(e) => {
-                    field.onChange(e.target.valueAsNumber);
-                  }}
+                  value={field.value === undefined ? '' : String(field.value)}
                 />
               </FormControl>
               <FormDescription>
-                Annual interest rate in percentage (1-20%)
+                interest rate in percentage (11%,12.25%,1.25% is valid)
               </FormDescription>
               <FormMessage />
             </FormItem>

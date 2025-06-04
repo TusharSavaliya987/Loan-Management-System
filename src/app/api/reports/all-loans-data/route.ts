@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
       customer: customersMap.get(loan.customerId) || null // Ensure customer can be null if not found
     })).filter(item => item.customer !== null); // Filter out loans with no matching customer for safety
 
-    console.log(`[API /api/reports/all-loans-data] Prepared ${reportData.length} loan entries with customer data for userId: ${userId}`);
+    console.log(`[API /api/reports/all-loans-data] Prepared ${userId}`);
     return NextResponse.json(reportData);
 
   } catch (error: any) {
