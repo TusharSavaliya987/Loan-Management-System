@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([]); // Return empty array if no loans
     }
 
-    const customerIds = [...new Set(loansData.map(loan => loan.customerId))];
+    const customerIds = Array.from(new Set(loansData.map(loan => loan.customerId)));
     const customersMap = new Map<string, CustomerInfo>();
 
     if (customerIds.length > 0) {
