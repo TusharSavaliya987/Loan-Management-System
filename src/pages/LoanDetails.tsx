@@ -15,61 +15,80 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { exportInterestPaymentsToPDF } from "@/utils/exportUtils";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import apiClient from "@/lib/apiClient";
+import { Loan, CustomerInfo } from "@/types/loan";
 
 const LoanDetails = () => {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const id = params?.id;
+  const loanIdFromParams = params?.id;
   
-  // Directly select the loan object based on id for reactivity
-  const loan = useLoanStore(state => id ? state.getLoan(id) : null);
-  // getCustomer can remain as is, or also be selected directly if preferred, but loan is primary driver here
-  const getCustomer = useLoanStore(state => state.getCustomer);
-  const updateLoan = useLoanStore(state => state.updateLoan);
-  const markPrincipalPaid = useLoanStore(state => state.markPrincipalPaid);
+  const loanFromStore = useLoanStore(state => loanIdFromParams ? state.getLoan(loanIdFromParams) : null);
+  const getCustomerFromStore = useLoanStore(state => state.getCustomer);
+  const updateLoanStoreAction = useLoanStore(state => state.updateLoan);
+  const markPrincipalPaidStoreAction = useLoanStore(state => state.markPrincipalPaid);
   
   const [closingConfirmOpen, setClosingConfirmOpen] = useState(false);
   const [principalConfirmOpen, setPrincipalConfirmOpen] = useState(false);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
   
-  // Customer can still be derived using useMemo if loan might be null initially
-  const customer = useMemo(() => {
-    if (!loan) return null;
-    return getCustomer(loan.customerId);
-  }, [loan, getCustomer]); // Depends on the reactive 'loan' and stable 'getCustomer'
+  const customerFromStore = useMemo(() => {
+    if (!loanFromStore) return null;
+    return getCustomerFromStore(loanFromStore.customerId);
+  }, [loanFromStore, getCustomerFromStore]);
   
   const pendingInterestPayments = useMemo(() => {
-    if (!loan) return [];
-    return loan.interestPayments.filter(p => p.status === "pending");
-  }, [loan]); // Depends on reactive 'loan'
+    if (!loanFromStore) return [];
+    return loanFromStore.interestPayments.filter(p => p.status === "pending");
+  }, [loanFromStore]);
   
   const paidInterestPayments = useMemo(() => {
-    if (!loan) return [];
-    return loan.interestPayments.filter(p => p.status === "paid");
-  }, [loan]); // Depends on reactive 'loan'
+    if (!loanFromStore) return [];
+    return loanFromStore.interestPayments.filter(p => p.status === "paid");
+  }, [loanFromStore]);
   
   const totalInterest = useMemo(() => {
-    if (!loan) return 0;
-    return loan.interestPayments.reduce((sum, payment) => sum + payment.amount, 0);
-  }, [loan]); // Depends on reactive 'loan'
+    if (!loanFromStore) return 0;
+    return loanFromStore.interestPayments.reduce((sum, payment) => sum + payment.amount, 0);
+  }, [loanFromStore]);
   
   const paidInterest = useMemo(() => {
-    if (!loan) return 0;
-    // Ensure this uses the updated amountPaid field if available, otherwise fallback to scheduled amount for paid items
+    if (!loanFromStore) return 0;
     return paidInterestPayments.reduce((sum, payment) => sum + (payment.amountPaid ?? payment.amount), 0);
-  }, [paidInterestPayments]); // Depends on paidInterestPayments, which depends on reactive 'loan'
+  }, [paidInterestPayments]);
   
-  const handleExportPDF = () => {
-    if (!loan || !customer) return;
-    
-    exportInterestPaymentsToPDF(loan, customer);
-    toast.success("PDF report generated successfully");
+  const handleExportPDF = async () => {
+    if (!loanIdFromParams) {
+      toast.error("Loan ID is missing.");
+      return;
+    }
+    if (isExportingPDF) return;
+    setIsExportingPDF(true);
+    toast.info("Fetching latest loan details for PDF report...");
+
+    try {
+      const fetchedData = await apiClient<{ loan: Loan; customer: CustomerInfo }>(
+        `reports/single-loan-data/${loanIdFromParams}`,
+        'GET'
+      );
+
+      if (fetchedData && fetchedData.loan && fetchedData.customer) {
+        exportInterestPaymentsToPDF(fetchedData.loan, fetchedData.customer);
+        toast.success("Loan details PDF report generated successfully!");
+      } else {
+        toast.error("Could not fetch complete loan details for the report.");
+      }
+    } catch (error: any) {
+      console.error("Error fetching loan details for PDF export:", error);
+      toast.error(error.message || "Failed to fetch loan details for PDF report.");
+    }
+    setIsExportingPDF(false);
   };
   
   const handleCloseLoan = async () => {
-    if (!loan) return;
-    
+    if (!loanFromStore) return;
     try {
-      await updateLoan(loan.id, { status: "closed" });
+      await updateLoanStoreAction(loanFromStore.id, { status: "closed" });
       setClosingConfirmOpen(false);
       toast.success("Loan has been closed");
     } catch (error) {
@@ -79,10 +98,9 @@ const LoanDetails = () => {
   };
   
   const handleMarkPrincipalPaid = async () => {
-    if (!loan) return;
-    
+    if (!loanFromStore) return;
     try {
-      await markPrincipalPaid(loan.id);
+      await markPrincipalPaidStoreAction(loanFromStore.id);
       setPrincipalConfirmOpen(false);
       toast.success("Principal amount marked as paid");
     } catch (error) {
@@ -91,10 +109,10 @@ const LoanDetails = () => {
     }
   };
   
-  if (!loan || !customer) {
+  if (!loanFromStore || !customerFromStore) {
     return (
       <div className="flex justify-center items-center h-80">
-        <p>Loan not found or customer data missing.</p> {/* Slightly more informative message */}
+        <p>Loan not found or customer data missing from store.</p>
       </div>
     );
   }
@@ -109,34 +127,34 @@ const LoanDetails = () => {
           <div>
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
               Loan Details
-              <Badge variant={loan.status === "active" ? "default" : "secondary"}>
-                {loan.status === "active" ? "Active" : loan.status.charAt(0).toUpperCase() + loan.status.slice(1) }
+              <Badge variant={loanFromStore.status === "active" ? "default" : "secondary"}>
+                {loanFromStore.status === "active" ? "Active" : loanFromStore.status.charAt(0).toUpperCase() + loanFromStore.status.slice(1) }
               </Badge>
             </h1>
-            <p className="text-muted-foreground">Customer: {customer.name}</p>
+            <p className="text-muted-foreground">Customer: {customerFromStore.name}</p>
           </div>
         </div>
         
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="flex gap-2" onClick={handleExportPDF}>
+          <Button variant="outline" className="flex gap-2" onClick={handleExportPDF} disabled={isExportingPDF}>
             <FileText className="h-4 w-4" />
-            Export PDF
+            {isExportingPDF ? "Generating..." : "Export PDF"}
           </Button>
           
-          {loan.status === "active" && (
+          {loanFromStore.status === "active" && (
             <>
               <Dialog open={principalConfirmOpen} onOpenChange={setPrincipalConfirmOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="flex gap-2" disabled={loan.principalPaid}>
+                  <Button variant="outline" className="flex gap-2" disabled={loanFromStore.principalPaid}>
                     <IndianRupee className="h-4 w-4" />
-                    {loan.principalPaid ? "Principal Paid" : "Mark Principal Paid"}
+                    {loanFromStore.principalPaid ? "Principal Paid" : "Mark Principal Paid"}
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Confirm Principal Payment</DialogTitle>
                     <DialogDescription>
-                      Are you sure you want to mark the principal amount of ₹{loan.principal.toLocaleString('en-IN')} as paid?
+                      Are you sure you want to mark the principal amount of ₹{loanFromStore.principal.toLocaleString('en-IN')} as paid?
                       This action cannot be undone.
                     </DialogDescription>
                   </DialogHeader>
@@ -184,9 +202,9 @@ const LoanDetails = () => {
             <div>
               <h3 className="font-medium mb-2">Customer Information</h3>
               <div className="space-y-1 text-sm">
-                <p><span className="text-muted-foreground">Name:</span> {customer.name}</p>
-                <p><span className="text-muted-foreground">Mobile:</span> {customer.mobile}</p>
-                <p><span className="text-muted-foreground">Email:</span> {customer.email}</p>
+                <p><span className="text-muted-foreground">Name:</span> {customerFromStore.name}</p>
+                <p><span className="text-muted-foreground">Mobile:</span> {customerFromStore.mobile}</p>
+                <p><span className="text-muted-foreground">Email:</span> {customerFromStore.email}</p>
               </div>
             </div>
             
@@ -199,29 +217,29 @@ const LoanDetails = () => {
                   <span className="text-muted-foreground">Principal:</span>
                   <span className="font-medium flex items-center sm:text-right">
                     <IndianRupee className="h-3 w-3 mr-1" />
-                    {loan.principal.toLocaleString('en-IN')}
+                    {loanFromStore.principal.toLocaleString('en-IN')}
                   </span>
                 </p>
                 <p className="flex flex-col sm:flex-row sm:justify-between">
                   <span className="text-muted-foreground">Interest Rate:</span>
-                  <span className="font-medium sm:text-right">{loan.interestRate}% p.a.</span>
+                  <span className="font-medium sm:text-right">{loanFromStore.interestRate}% p.a.</span>
                 </p>
                 <p className="flex flex-col sm:flex-row sm:justify-between">
                   <span className="text-muted-foreground">Start Date:</span>
-                  <span className="font-medium sm:text-right">{format(parseISO(loan.startDate), "dd MMM yyyy")}</span>
+                  <span className="font-medium sm:text-right">{format(parseISO(loanFromStore.startDate), "dd MMM yyyy")}</span>
                 </p>
                 <p className="flex flex-col sm:flex-row sm:justify-between">
                   <span className="text-muted-foreground">End Date:</span>
-                  <span className="font-medium sm:text-right">{format(parseISO(loan.endDate), "dd MMM yyyy")}</span>
+                  <span className="font-medium sm:text-right">{format(parseISO(loanFromStore.endDate), "dd MMM yyyy")}</span>
                 </p>
                 <p className="flex flex-col sm:flex-row sm:justify-between">
                   <span className="text-muted-foreground">Payment Frequency:</span>
-                  <span className="font-medium capitalize sm:text-right">{loan.interestFrequency}</span>
+                  <span className="font-medium capitalize sm:text-right">{loanFromStore.interestFrequency}</span>
                 </p>
                 <p className="flex flex-col sm:flex-row sm:justify-between">
                   <span className="text-muted-foreground">Principal Status:</span>
-                  <Badge variant="outline" className={`${loan.principalPaid ? "bg-green-50" : ""} sm:ml-auto`}>
-                    {loan.principalPaid ? "Paid" : "Outstanding"}
+                  <Badge variant="outline" className={`${loanFromStore.principalPaid ? "bg-green-50" : ""} sm:ml-auto`}>
+                    {loanFromStore.principalPaid ? "Paid" : "Outstanding"}
                   </Badge>
                 </p>
               </div>
@@ -255,7 +273,7 @@ const LoanDetails = () => {
                 </p>
                 <p className="flex flex-col sm:flex-row sm:justify-between">
                   <span className="text-muted-foreground">Paid Installments:</span>
-                  <span className="font-medium sm:text-right">{paidInterestPayments.length} of {loan.interestPayments.length}</span>
+                  <span className="font-medium sm:text-right">{paidInterestPayments.length} of {loanFromStore.interestPayments.length}</span>
                 </p>
               </div>
             </div>
@@ -268,18 +286,18 @@ const LoanDetails = () => {
             <CardDescription>Track all interest payments for this loan</CardDescription>
           </CardHeader>
           <CardContent>
-            {loan.interestPayments.length === 0 ? (
+            {loanFromStore.interestPayments.length === 0 ? (
               <p className="text-center py-4 text-muted-foreground">No payment schedules found</p>
             ) : (
               <Tabs defaultValue="all">
                 <TabsList className="mb-4">
-                  <TabsTrigger value="all">All ({loan.interestPayments.length})</TabsTrigger>
+                  <TabsTrigger value="all">All ({loanFromStore.interestPayments.length})</TabsTrigger>
                   <TabsTrigger value="pending">Pending ({pendingInterestPayments.length})</TabsTrigger>
                   <TabsTrigger value="paid">Paid ({paidInterestPayments.length})</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="all" className="overflow-x-auto">
-                  <PaymentTable loan={loan} />
+                  <PaymentTable loan={loanFromStore} />
                 </TabsContent>
                 
                 <TabsContent value="pending" className="overflow-x-auto">
@@ -291,7 +309,7 @@ const LoanDetails = () => {
                   ) : (
                     <PaymentTable 
                       loan={{
-                        ...loan,
+                        ...loanFromStore,
                         interestPayments: pendingInterestPayments
                       }} 
                     />
@@ -307,7 +325,7 @@ const LoanDetails = () => {
                   ) : (
                     <PaymentTable 
                       loan={{
-                        ...loan,
+                        ...loanFromStore,
                         interestPayments: paidInterestPayments
                       }} 
                     />

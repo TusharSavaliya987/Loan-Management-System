@@ -10,42 +10,74 @@ import { useLoanStore } from "@/store/loanStore";
 import { FileText, IndianRupee, Download } from "lucide-react";
 import { toast } from "sonner";
 import { exportLoansToExcel, exportCustomersToPDF } from "@/utils/exportUtils";
+import apiClient from "@/lib/apiClient";
+import { Loan, CustomerInfo } from "@/types/loan";
 
 const Reports = () => {
-  const loans = useLoanStore(state => state.loans);
-  const customers = useLoanStore(state => state.customers);
-  const getCustomer = useLoanStore(state => state.getCustomer);
+  const loansFromStore = useLoanStore(state => state.loans);
+  const customersFromStore = useLoanStore(state => state.customers);
+  const getCustomerFromStore = useLoanStore(state => state.getCustomer);
   
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [isExportingLoans, setIsExportingLoans] = useState(false);
+  const [isExportingCustomers, setIsExportingCustomers] = useState(false);
   
-  const filteredLoans = useMemo(() => {
-    return loans
+  const filteredLoansForUI = useMemo(() => {
+    return loansFromStore
       .filter(loan => {
         if (statusFilter === "all") return true;
         return loan.status === statusFilter;
       })
       .map(loan => {
-        const customer = getCustomer(loan.customerId);
+        const customer = getCustomerFromStore(loan.customerId);
         if (!customer) return null;
         return { loan, customer };
       })
-      .filter(Boolean) as { loan: typeof loans[0]; customer: typeof customers[0] }[];
-  }, [loans, getCustomer, statusFilter]);
+      .filter(Boolean) as { loan: Loan; customer: CustomerInfo }[];
+  }, [loansFromStore, getCustomerFromStore, statusFilter]);
   
-  const handleExportLoansExcel = () => {
-    exportLoansToExcel(filteredLoans);
-    toast.success("Excel report generated successfully");
+  const handleExportLoansExcel = async () => {
+    if (isExportingLoans) return;
+    setIsExportingLoans(true);
+    toast.info("Fetching latest loan data for Excel report...");
+    try {
+      const reportData = await apiClient<Array<{ loan: Loan; customer: CustomerInfo }>>('reports/all-loans-data', 'GET');
+      
+      if (reportData && reportData.length > 0) {
+        exportLoansToExcel(reportData);
+        toast.success("Loans Excel report generated successfully!");
+      } else {
+        toast.info("No loan data found to generate the report.");
+      }
+    } catch (error: any) {
+      console.error("Error fetching loan data for export:", error);
+      toast.error(error.message || "Failed to fetch loan data for Excel report.");
+    }
+    setIsExportingLoans(false);
   };
   
-  const handleExportCustomersPDF = () => {
-    exportCustomersToPDF(customers);
-    toast.success("PDF report generated successfully");
+  const handleExportCustomersPDF = async () => {
+    if (isExportingCustomers) return;
+    setIsExportingCustomers(true);
+    toast.info("Fetching latest customer data for PDF report...");
+    try {
+      const customersData = await apiClient<CustomerInfo[]>('reports/all-customers-data', 'GET');
+      if (customersData && customersData.length > 0) {
+        exportCustomersToPDF(customersData);
+        toast.success("Customers PDF report generated successfully!");
+      } else {
+        toast.info("No customer data found to generate the report.");
+      }
+    } catch (error: any) {
+      console.error("Error fetching customer data for export:", error);
+      toast.error(error.message || "Failed to fetch customer data for PDF report.");
+    }
+    setIsExportingCustomers(false);
   };
   
-  // Calculate summary stats
   const stats = useMemo(() => {
-    const activeLoans = loans.filter(loan => loan.status === "active");
-    const closedLoans = loans.filter(loan => loan.status === "closed");
+    const activeLoans = loansFromStore.filter(loan => loan.status === "active");
+    const closedLoans = loansFromStore.filter(loan => loan.status === "closed");
     
     const totalPrincipal = activeLoans.reduce((sum, loan) => sum + loan.principal, 0);
     const totalInterest = activeLoans.reduce((sum, loan) => {
@@ -55,18 +87,18 @@ const Reports = () => {
     const paidInterest = activeLoans.reduce((sum, loan) => {
       return sum + loan.interestPayments
         .filter(payment => payment.status === "paid")
-        .reduce((interestSum, payment) => interestSum + payment.amount, 0);
+        .reduce((interestSum, payment) => interestSum + (payment.amountPaid ?? payment.amount), 0);
     }, 0);
     
     return {
       activeLoansCount: activeLoans.length,
       closedLoansCount: closedLoans.length,
-      customersCount: customers.length,
+      customersCount: customersFromStore.length,
       totalPrincipal,
       totalInterest,
       paidInterest
     };
-  }, [loans, customers]);
+  }, [loansFromStore, customersFromStore]);
   
   return (
     <div className="space-y-6">
@@ -141,7 +173,7 @@ const Reports = () => {
             <TabsContent value="loans">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Filter by status</Label>
+                  <Label>Filter by status (For UI Display Only)</Label>
                   <Select
                     value={statusFilter}
                     onValueChange={setStatusFilter}
@@ -162,26 +194,22 @@ const Reports = () => {
                     <div>
                       <h3 className="font-medium">Loans Report (Excel)</h3>
                       <p className="text-sm text-muted-foreground">
-                        Export all {statusFilter === "all" ? "loans" : `${statusFilter} loans`} to Excel format
+                        Export all your loans to Excel format (uses latest data from database)
                       </p>
                     </div>
                     <Button 
                       variant="outline" 
                       onClick={handleExportLoansExcel}
-                      disabled={filteredLoans.length === 0}
+                      disabled={isExportingLoans}
                       className="flex items-center gap-2"
                     >
                       <FileText className="h-4 w-4" />
-                      Export Excel
+                      {isExportingLoans ? "Generating..." : "Export Excel"}
                     </Button>
                   </div>
                 </div>
-                
                 <div className="text-sm text-muted-foreground">
-                  {filteredLoans.length === 0 ? 
-                    <p>No loans match the selected filter criteria.</p> : 
-                    <p>This report includes {filteredLoans.length} {statusFilter === "all" ? "loans" : `${statusFilter} loans`}.</p>
-                  }
+                  <p>This report will include all loans associated with your account from the database.</p>
                 </div>
               </div>
             </TabsContent>
@@ -193,26 +221,22 @@ const Reports = () => {
                     <div>
                       <h3 className="font-medium">Customers Report (PDF)</h3>
                       <p className="text-sm text-muted-foreground">
-                        Export all customers to PDF format
+                        Export all customers to PDF format (uses latest data from database)
                       </p>
                     </div>
                     <Button 
                       variant="outline" 
                       onClick={handleExportCustomersPDF}
-                      disabled={customers.length === 0}
+                      disabled={isExportingCustomers}
                       className="flex items-center gap-2"
                     >
                       <Download className="h-4 w-4" />
-                      Export PDF
+                      {isExportingCustomers ? "Generating..." : "Export PDF"}
                     </Button>
                   </div>
                 </div>
-                
                 <div className="text-sm text-muted-foreground">
-                  {customers.length === 0 ? 
-                    <p>No customers found in the system.</p> : 
-                    <p>This report includes information on all {customers.length} customers.</p>
-                  }
+                  <p>This report includes information on all customers from the database.</p>
                 </div>
               </div>
             </TabsContent>
@@ -220,7 +244,7 @@ const Reports = () => {
         </CardContent>
         <CardFooter className="border-t px-6 py-4 flex justify-between">
           <p className="text-sm text-muted-foreground">
-            Reports are generated based on the current data in your system.
+            Reports are generated based on the current data in your system fetched live from the database.
           </p>
         </CardFooter>
       </Card>
