@@ -1,6 +1,3 @@
-// Removed: import { auth } from './firebase'; // Assuming this is your client-side Firebase auth instance
-// Removed: import Cookies from 'js-cookie';
-
 interface RequestOptions extends RequestInit {
   body?: any; // Allow structured body
 }
@@ -14,25 +11,9 @@ async function apiClient<T = any>(
     'Content-Type': 'application/json',
   };
 
-  // No longer manually setting Authorization header.
-  // The browser will automatically send the httpOnly 'auth-session' cookie.
-
-  // Removed token logic:
-  // const token = Cookies.get('auth-session');
-  // if (token) {
-  //   headers['Authorization'] = `Bearer ${token}`;
-  // } else {
-  //   console.warn(`API call to ${endpoint} made without an auth token cookie.`);
-  //   if (method !== 'GET') {
-  //     // throw new Error("User not authenticated: No auth token cookie found.");
-  //   }
-  // }
-
   const config: RequestOptions = {
     method: method,
     headers: headers,
-    // credentials: 'include', // Usually not needed for same-origin requests with cookies, browser handles it.
-                            // Only needed if your API is on a different domain/subdomain and requires credentials.
   };
 
   if (data) {

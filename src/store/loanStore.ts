@@ -104,6 +104,7 @@ interface LoanState {
   restoreLoan: (loanId: string) => Promise<void>;
   permanentlyDeleteOldSoftDeletedLoans: (daysToExpire: number) => Promise<void>;
   permanentlyDeleteLoan: (loanId: string) => Promise<void>;
+  deleteCustomerPermanently: (customerId: string) => Promise<void>;
 
   // Pagination actions
   setLoanPage: (page: number) => void;
@@ -500,6 +501,26 @@ export const useLoanStore = create<LoanState>((set, get) => ({
     }
     // isLoadingLoans will be set to false by fetchLoans if that's called.
     // If updating locally, ensure it's set to false here.
+  },
+
+  deleteCustomerPermanently: async (customerId: string) => {
+    set({ isLoadingCustomers: true, error: null });
+    try {
+      await apiClient(`customers/${customerId}`, 'DELETE');
+      // Remove the customer from the local state
+      set(state => ({
+        customers: state.customers.filter(customer => customer.id !== customerId),
+        isLoadingCustomers: false,
+      }));
+      // No need to re-fetch all customers if we update locally correctly.
+    } catch (error: any) {
+      console.error("Error permanently deleting customer via API:", error);
+      set({
+        error: "Failed to delete customer. " + (error.message || 'Unknown error'),
+        isLoadingCustomers: false,
+      });
+      throw error; // Re-throw to allow UI to handle it (e.g., show toast)
+    }
   },
 
   // Pagination Actions with defensive set
