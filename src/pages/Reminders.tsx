@@ -167,13 +167,6 @@ const Reminders = () => {
             </div>
           )}
         </CardContent>
-        <CardFooter className="border-t px-6 py-4">
-          <p className="text-sm text-muted-foreground">
-            In a production environment, reminders would be automatically sent
-            via email based on your settings. This interface demonstrates how
-            the notification system would work.
-          </p>
-        </CardFooter>
       </Card>
     </div>
   );
