@@ -6,9 +6,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { LoanCard } from "@/components/loans/LoanCard";
 import { LoanForm } from "@/components/forms/LoanForm";
+import { CustomerForm } from "@/components/forms/CustomerForm";
 import { useLoanStore } from "@/store/loanStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { IndianRupee } from "lucide-react";
+import { IndianRupee, User } from "lucide-react";
 
 const Loans = () => {
   const loans = useLoanStore(state => state.loans);
@@ -16,7 +17,8 @@ const Loans = () => {
   
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [open, setOpen] = useState(false);
+  const [openLoanDialog, setOpenLoanDialog] = useState(false);
+  const [openCustomerDialog, setOpenCustomerDialog] = useState(false);
   
   const filteredLoans = useMemo(() => {
     return loans
@@ -48,23 +50,43 @@ const Loans = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold tracking-tight">Loans</h1>
         
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="flex gap-2 items-center">
-              <IndianRupee className="h-4 w-4" />
-              Add New Loan
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add New Loan</DialogTitle>
-              <DialogDescription>
-                Create a new loan by filling out the details below.
-              </DialogDescription>
-            </DialogHeader>
-            <LoanForm onSuccess={() => setOpen(false)} />
-          </DialogContent>
-        </Dialog>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Dialog open={openCustomerDialog} onOpenChange={setOpenCustomerDialog}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="flex gap-2 items-center">
+                <User className="h-4 w-4" />
+                Add New Customer
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Add New Customer</DialogTitle>
+                <DialogDescription>
+                  Create a new customer by filling out the details below.
+                </DialogDescription>
+              </DialogHeader>
+              <CustomerForm onSuccess={() => setOpenCustomerDialog(false)} />
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={openLoanDialog} onOpenChange={setOpenLoanDialog}>
+            <DialogTrigger asChild>
+              <Button className="flex gap-2 items-center">
+                <IndianRupee className="h-4 w-4" />
+                Add New Loan
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add New Loan</DialogTitle>
+                <DialogDescription>
+                  Create a new loan by filling out the details below.
+                </DialogDescription>
+              </DialogHeader>
+              <LoanForm onSuccess={() => setOpenLoanDialog(false)} />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
       
       <div className="flex flex-col sm:flex-row gap-4">

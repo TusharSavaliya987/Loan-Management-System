@@ -68,13 +68,18 @@ export async function POST(request: Request) {
     const loanData = await request.json();
 
     // Add userId and creation timestamp to the loan data
-    const loanWithMetadata = {
+    const loanWithMetadata: { [key: string]: any } = {
       ...loanData,
       userId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       status: 'active'
     };
+
+    // Ensure remarks is not an empty string, which becomes null in Firestore
+    if (!loanWithMetadata.remarks) {
+      delete loanWithMetadata.remarks;
+    }
 
     // Add the loan to Firestore
     const loanRef = await db.collection('loans').add(loanWithMetadata);

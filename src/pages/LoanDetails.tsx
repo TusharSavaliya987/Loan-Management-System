@@ -236,6 +236,12 @@ const LoanDetails = () => {
                   <span className="text-muted-foreground">Payment Frequency:</span>
                   <span className="font-medium capitalize sm:text-right">{loanFromStore.interestFrequency}</span>
                 </p>
+                {loanFromStore.remarks && (
+                  <div className="flex flex-col text-sm">
+                    <span className="text-muted-foreground">Remarks:</span>
+                    <p className="font-medium sm:text-right whitespace-pre-wrap">{loanFromStore.remarks}</p>
+                  </div>
+                )}
                 <p className="flex flex-col sm:flex-row sm:justify-between">
                   <span className="text-muted-foreground">Principal Status:</span>
                   <Badge variant="outline" className={`${loanFromStore.principalPaid ? "bg-green-50" : ""} sm:ml-auto`}>

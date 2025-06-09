@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { CustomerInfo, Loan, InterestPayment, InterestFrequency } from '../types/loan';
-import { addMonths, format, parseISO, addDays } from 'date-fns';
+import { addMonths, format, parseISO, addDays, isBefore } from 'date-fns';
 import apiClient from '@/lib/apiClient'; 
 import { useAuthStore } from './authStore'; // AppUser import removed as it's not directly used here
 
@@ -100,6 +100,7 @@ interface LoanState {
   markInterestPaid: (loanId: string, paymentId: string, paidDate: string, remarks?: string, manualAmount?: number) => Promise<void>;
   markPrincipalPaid: (loanId: string) => Promise<void>;
   getUpcomingPayments: (days: number) => { loan: Loan; payment: InterestPayment; customer: CustomerInfo | undefined }[];
+  getOverduePayments: () => { loan: Loan; payment: InterestPayment; customer: CustomerInfo | undefined }[];
   deleteLoanSoft: (loanId: string) => Promise<void>;
   restoreLoan: (loanId: string) => Promise<void>;
   permanentlyDeleteOldSoftDeletedLoans: (daysToExpire: number) => Promise<void>;
@@ -388,32 +389,58 @@ export const useLoanStore = create<LoanState>((set, get) => ({
     }
   },
   
-  getUpcomingPayments: (days) => {
-    const now = new Date();
-    const futureDate = addDays(now, days);
-    const nowStr = format(now, "yyyy-MM-dd");
-    const futureDateStr = format(futureDate, "yyyy-MM-dd");
-    
-    const result: { loan: Loan; payment: InterestPayment; customer: CustomerInfo | undefined }[] = [];
-    
-    for (const loan of get().loans) {
-      if (loan.status === "active") {
-        for (const payment of loan.interestPayments) {
-          if (
-            payment.status === "pending" &&
-            payment.dueDate >= nowStr &&
-            payment.dueDate <= futureDateStr
-          ) {
-            const customer = get().getCustomer(loan.customerId);
-            result.push({ loan, payment, customer });
-          }
+  getUpcomingPayments: (days: number) => {
+    const { loans, getCustomer } = get();
+    const results = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalize today to the start of the day
+    const futureDate = addDays(today, days);
+
+    for (const loan of loans) {
+      if (loan.status !== 'active') continue;
+
+      for (const payment of loan.interestPayments) {
+        if (payment.status !== 'pending') continue;
+
+        const dueDate = parseISO(payment.dueDate);
+        // Upcoming: due date is on or after today AND before the future date
+        if (!isBefore(dueDate, today) && isBefore(dueDate, futureDate)) {
+          results.push({
+            loan,
+            payment,
+            customer: getCustomer(loan.customerId),
+          });
         }
       }
     }
-    
-    return result.sort((a, b) => 
-      new Date(a.payment.dueDate).getTime() - new Date(b.payment.dueDate).getTime()
-    );
+    return results.sort((a, b) => parseISO(a.payment.dueDate).getTime() - parseISO(b.payment.dueDate).getTime());
+  },
+
+  getOverduePayments: () => {
+    const { loans, getCustomer } = get();
+    const results = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalize to the start of the day
+
+    for (const loan of loans) {
+      if (loan.status !== 'active') continue;
+
+      for (const payment of loan.interestPayments) {
+        if (payment.status !== 'pending') continue;
+
+        const dueDate = parseISO(payment.dueDate);
+        // Overdue: due date is before today
+        if (isBefore(dueDate, today)) {
+          results.push({
+            loan,
+            payment,
+            customer: getCustomer(loan.customerId),
+          });
+        }
+      }
+    }
+    // Sort by oldest due date first
+    return results.sort((a, b) => parseISO(a.payment.dueDate).getTime() - parseISO(b.payment.dueDate).getTime());
   },
 
   deleteLoanSoft: async (loanId) => {

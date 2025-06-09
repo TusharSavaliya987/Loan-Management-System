@@ -37,6 +37,11 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ message: 'Unauthorized to update this loan.' }, { status: 403 });
     }
     
+    // If remarks are sent as an empty string, remove them to avoid storing null
+    if (updates.remarks === '') {
+      delete updates.remarks;
+    }
+
     updates.updatedAt = new Date().toISOString();
 
     await loanRef.update(updates);
@@ -96,6 +101,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return NextResponse.json({ message: 'Unauthorized to update this loan.' }, { status: 403 });
     }
     
+    // If remarks are sent as an empty string, remove them to avoid storing null
+    if (updates.remarks === '') {
+      delete updates.remarks;
+    }
+
     updates.updatedAt = new Date().toISOString();
 
     await loanRef.update(updates);

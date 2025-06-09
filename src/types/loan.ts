@@ -38,4 +38,5 @@ export type Loan = {
   createdAt?: string; // Added optional createdAt timestamp
   updatedAt?: string; // Added optional updatedAt timestamp
   userId?: string; // Added optional userId
+  remarks?: string;
 };

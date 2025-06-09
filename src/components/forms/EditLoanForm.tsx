@@ -14,6 +14,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -45,7 +46,7 @@ const formSchema = z.object({
     .max(1000000000, { message: "Principal amount cannot exceed 1,000,000,000" }),
   interestRate: z.coerce.number()
     .min(1, { message: "Interest rate must be at least 1%" })
-    .max(20, { message: "Interest rate cannot exceed 20%" }),
+    .max(100, { message: "Interest rate cannot exceed 100%" }),
   startDate: z.date({
     required_error: "Start date is required",
   }),
@@ -55,6 +56,7 @@ const formSchema = z.object({
   interestFrequency: z.enum(["monthly", "quarterly", "half-yearly", "yearly"], {
     required_error: "Please select interest payment frequency",
   }),
+  remarks: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -99,14 +101,14 @@ export function EditLoanForm({ loan, onSuccess }: EditLoanFormProps) {
       value = parts[0] + '.' + parts[1].substring(0, 2);
     }
     
-    // 4. Max value check (up to "20.xx"). Min value (1) is handled by Zod.
+    // 4. Max value check (up to "100.xx"). Min value (1) is handled by Zod.
     // Allows "0", "0.", "." as intermediate.
     if (value !== "" && value !== "." ) { 
       if (!value.endsWith('.')) { // Only parse if not ending with a dot (e.g. "1." is allowed)
           const numValue = parseFloat(value);
           if (!isNaN(numValue)) { 
-              if (numValue > 20) {
-                  value = "20";
+              if (numValue > 100) {
+                  value = "100";
               } else if (numValue < 0) { 
                   value = ""; 
               }
@@ -115,8 +117,8 @@ export function EditLoanForm({ loan, onSuccess }: EditLoanFormProps) {
           if (value.length > 1) { // Avoid parsing just "."
             const numPartBeforeDot = parseFloat(parts[0]);
             if (!isNaN(numPartBeforeDot)) {
-                if (numPartBeforeDot > 20) {
-                    value = "20."; 
+                if (numPartBeforeDot > 100) {
+                    value = "100."; 
                 } else if (numPartBeforeDot < 0) {
                     value = "0."; // Or "" or "." depending on desired behavior
                 }
@@ -147,6 +149,7 @@ export function EditLoanForm({ loan, onSuccess }: EditLoanFormProps) {
       startDate: new Date(loan.startDate),
       endDate: new Date(loan.endDate),
       interestFrequency: loan.interestFrequency,
+      remarks: loan.remarks || "",
     },
   });
 
@@ -158,6 +161,7 @@ export function EditLoanForm({ loan, onSuccess }: EditLoanFormProps) {
         startDate: format(values.startDate, "yyyy-MM-dd"),
         endDate: format(values.endDate, "yyyy-MM-dd"),
         interestFrequency: values.interestFrequency,
+        remarks: values.remarks,
       };
       
       await updateLoan(loan.id, loanUpdatePayload);
@@ -214,7 +218,7 @@ export function EditLoanForm({ loan, onSuccess }: EditLoanFormProps) {
                     <SelectValue placeholder="Select a customer" />
                   </SelectTrigger>
                 </FormControl>
-                <SelectContent>
+                <SelectContent className="max-h-56">
                   {customers.map((customer) => (
                     <SelectItem key={customer.id} value={customer.id}>
                       {customer.name} ({customer.mobile})
@@ -224,6 +228,27 @@ export function EditLoanForm({ loan, onSuccess }: EditLoanFormProps) {
               </Select>
               <FormDescription>
                 Select the customer for this loan
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="remarks"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Remarks</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Enter any remarks for the loan (e.g., cheque no., special conditions)"
+                  className="resize-none"
+                  {...field}
+                />
+              </FormControl>
+              <FormDescription>
+                Add any notes or descriptions for this loan.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -271,7 +296,7 @@ export function EditLoanForm({ loan, onSuccess }: EditLoanFormProps) {
                 />
               </FormControl>
               <FormDescription>
-                Annual interest rate as a percentage (1-20%)
+                Annual interest rate as a percentage (1-100%)
               </FormDescription>
               <FormMessage />
             </FormItem>

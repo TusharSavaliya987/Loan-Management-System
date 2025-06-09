@@ -114,10 +114,18 @@ export function LoanCard({ loan, customer }: LoanCardProps) {
               {loan.interestFrequency}
             </span>
           </div>
+          {loan.remarks && (
+            <div className="flex flex-col sm:flex-row sm:justify-between">
+              <span className="text-sm text-muted-foreground">Remarks</span>
+              <p className="text-sm font-medium sm:text-right line-clamp-1">
+                {loan.remarks}
+              </p>
+            </div>
+          )}
           {nextPayment && (
             <div className="mt-2 pt-2 border-t">
               <div className="flex flex-col sm:flex-row sm:justify-between">
-                <span className="text-sm font-medium">Next payment</span>
+                <span className="text-sm text-muted-foreground">Next payment</span>
                 <span className="font-medium sm:text-right">
                   {format(parseISO(nextPayment.dueDate), "PPP")}
                 </span>
