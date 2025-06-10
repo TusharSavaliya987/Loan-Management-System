@@ -100,7 +100,6 @@ interface LoanState {
   markInterestPaid: (loanId: string, paymentId: string, paidDate: string, remarks?: string, manualAmount?: number) => Promise<void>;
   markPrincipalPaid: (loanId: string) => Promise<void>;
   getUpcomingPayments: (days: number) => { loan: Loan; payment: InterestPayment; customer: CustomerInfo | undefined }[];
-  getOverduePayments: () => { loan: Loan; payment: InterestPayment; customer: CustomerInfo | undefined }[];
   deleteLoanSoft: (loanId: string) => Promise<void>;
   restoreLoan: (loanId: string) => Promise<void>;
   permanentlyDeleteOldSoftDeletedLoans: (daysToExpire: number) => Promise<void>;
@@ -413,33 +412,6 @@ export const useLoanStore = create<LoanState>((set, get) => ({
         }
       }
     }
-    return results.sort((a, b) => parseISO(a.payment.dueDate).getTime() - parseISO(b.payment.dueDate).getTime());
-  },
-
-  getOverduePayments: () => {
-    const { loans, getCustomer } = get();
-    const results = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normalize to the start of the day
-
-    for (const loan of loans) {
-      if (loan.status !== 'active') continue;
-
-      for (const payment of loan.interestPayments) {
-        if (payment.status !== 'pending') continue;
-
-        const dueDate = parseISO(payment.dueDate);
-        // Overdue: due date is before today
-        if (isBefore(dueDate, today)) {
-          results.push({
-            loan,
-            payment,
-            customer: getCustomer(loan.customerId),
-          });
-        }
-      }
-    }
-    // Sort by oldest due date first
     return results.sort((a, b) => parseISO(a.payment.dueDate).getTime() - parseISO(b.payment.dueDate).getTime());
   },
 

@@ -347,7 +347,7 @@ export function LoanForm({ onSuccess }: LoanFormProps) {
                 />
               </FormControl>
               <FormDescription>
-                Annual interest rate as a percentage (1-100%)
+                Annual interest rate as a percentage 
               </FormDescription>
               <FormMessage />
             </FormItem>

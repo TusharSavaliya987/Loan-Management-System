@@ -37,10 +37,21 @@ const Loans = () => {
         return matchesSearch && matchesStatus;
       })
       .sort((a, b) => {
-        // Sort by status (active first) and then by start date (newest first)
+        const customerA = getCustomer(a.customerId);
+        const customerB = getCustomer(b.customerId);
+
+        if (!customerA || !customerB) return 0;
+
+        // Primary sort: by customer mobile number to group loans
+        if (customerA.mobile < customerB.mobile) return -1;
+        if (customerA.mobile > customerB.mobile) return 1;
+        
+        // Secondary sort: by status (active first)
         if (a.status !== b.status) {
           return a.status === "active" ? -1 : 1;
         }
+        
+        // Tertiary sort: by start date (newest first)
         return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
       });
   }, [loans, getCustomer, searchQuery, statusFilter]);

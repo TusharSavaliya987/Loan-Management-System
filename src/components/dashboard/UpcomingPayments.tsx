@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { format, parseISO, isBefore } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { useLoanStore } from "@/store/loanStore";
 import { IndianRupee } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,9 +21,6 @@ export function UpcomingPayments() {
   const router = useRouter();
   const getUpcomingPaymentsFunc = useLoanStore(
     (state) => state.getUpcomingPayments
-  );
-  const getOverduePaymentsFunc = useLoanStore(
-    (state) => state.getOverduePayments
   );
   const loans = useLoanStore((state) => state.loans);
   const customers = useLoanStore((state) => state.customers);
@@ -46,23 +43,12 @@ export function UpcomingPayments() {
     selectedDays,
   ]);
 
-  const overduePayments = useMemo(() => {
-    if (isLoadingLoans || isLoadingCustomers) {
-      return [];
-    }
-    return getOverduePaymentsFunc();
-  }, [getOverduePaymentsFunc, loans, customers, isLoadingLoans, isLoadingCustomers]);
-
-  const combinedPayments = useMemo(() => {
-    return [...overduePayments, ...upcomingPayments];
-  }, [overduePayments, upcomingPayments]);
-
   const handlePaymentClick = (loanId: string) => {
     router.push(`/loans/${loanId}`);
   };
 
-  const CardTitleText = `Upcoming & Overdue Payments`;
-  const CardDescriptionText = `Overdue payments and payments due in the next ${selectedDays} days.`;
+  const CardTitleText = `Upcoming Payments`;
+  const CardDescriptionText = `Payments due in the next ${selectedDays} days.`;
 
   if (isLoadingLoans || isLoadingCustomers) {
     return (
@@ -111,25 +97,20 @@ export function UpcomingPayments() {
                 ))}
             </div>
         </div>
-        {combinedPayments.length === 0 ? (
+        {upcomingPayments.length === 0 ? (
           <p className="text-center text-muted-foreground py-6">
-            No upcoming or overdue payments found.
+            No upcoming payments found.
           </p>
         ) : (
           <div className="space-y-4">
-            {combinedPayments.map(({ loan, payment, customer }) => {
+            {upcomingPayments.map(({ loan, payment, customer }) => {
               const customerName = customer?.name || "N/A";
               const customerMobile = customer?.mobile || "-";
-              const isOverdue = isBefore(parseISO(payment.dueDate), new Date());
 
               return (
                 <div
                   key={payment.id}
-                  className={`border rounded-md p-4 flex flex-col gap-2 cursor-pointer transition-colors ${
-                    isOverdue
-                      ? "border-destructive/50 hover:bg-destructive/10"
-                      : "hover:bg-muted/50"
-                  }`}
+                  className="border rounded-md p-4 flex flex-col gap-2 cursor-pointer transition-colors hover:bg-muted/50"
                   onClick={() => handlePaymentClick(loan.id)}
                 >
                   <div className="flex justify-between items-start">
@@ -139,7 +120,7 @@ export function UpcomingPayments() {
                         {customerMobile}
                       </p>
                     </div>
-                    <Badge variant={isOverdue ? "destructive" : "default"}>
+                    <Badge variant="default">
                         {format(parseISO(payment.dueDate), "dd MMM yyyy")}
                     </Badge>
                   </div>

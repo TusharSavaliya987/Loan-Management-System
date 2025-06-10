@@ -21,7 +21,16 @@ export async function GET(request: NextRequest) {
     const decodedClaims = await firebaseAdminAuth.verifySessionCookie(sessionCookie, true /* checkRevoked */);
     const userId = decodedClaims.uid;
 
-    const loansSnapshot = await db.collection('loans').where('userId', '==', userId).get();
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status');
+
+    let loansQuery = db.collection('loans').where('userId', '==', userId);
+
+    if (status && status !== 'all') {
+      loansQuery = loansQuery.where('status', '==', status);
+    }
+
+    const loansSnapshot = await loansQuery.get();
     const loansData: Loan[] = [];
     loansSnapshot.forEach(doc => {
       loansData.push({ id: doc.id, ...doc.data() } as Loan);

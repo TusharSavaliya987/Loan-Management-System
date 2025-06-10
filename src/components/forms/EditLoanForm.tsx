@@ -136,10 +136,6 @@ export function EditLoanForm({ loan, onSuccess }: EditLoanFormProps) {
     }
   };
   
-  // State for manual date inputs
-  const [startDateInput, setStartDateInput] = useState(loan.startDate);
-  const [endDateInput, setEndDateInput] = useState(loan.endDate);
-  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -178,34 +174,9 @@ export function EditLoanForm({ loan, onSuccess }: EditLoanFormProps) {
     }
   }
 
-  // Handle manual date input
-  const handleManualStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setStartDateInput(e.target.value);
-    try {
-      const parsedDate = parse(e.target.value, "yyyy-MM-dd", new Date());
-      if (!isNaN(parsedDate.getTime())) {
-        form.setValue("startDate", parsedDate);
-      }
-    } catch (error) {
-      console.error("Invalid date format:", error);
-    }
-  };
-
-  const handleManualEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEndDateInput(e.target.value);
-    try {
-      const parsedDate = parse(e.target.value, "yyyy-MM-dd", new Date());
-      if (!isNaN(parsedDate.getTime())) {
-        form.setValue("endDate", parsedDate);
-      }
-    } catch (error) {
-      console.error("Invalid date format:", error);
-    }
-  };
-
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-h-[65vh] overflow-y-auto pr-4">
         <FormField
           control={form.control}
           name="customerId"
@@ -296,7 +267,7 @@ export function EditLoanForm({ loan, onSuccess }: EditLoanFormProps) {
                 />
               </FormControl>
               <FormDescription>
-                Annual interest rate as a percentage (1-100%)
+                Annual interest rate as a percentage
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -310,54 +281,34 @@ export function EditLoanForm({ loan, onSuccess }: EditLoanFormProps) {
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel>Start Date</FormLabel>
-                <div className="grid gap-2">
-                  {/* <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Select date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={(date) => {
-                          field.onChange(date);
-                          if (date) {
-                            setStartDateInput(format(date, "yyyy-MM-dd"));
-                          }
-                        }}
-                        initialFocus
-                        className={cn("p-3 pointer-events-auto")}
-                        captionLayout="dropdown-buttons"
-                        fromYear={2000}
-                        toYear={2100}
-                      />
-                    </PopoverContent>
-                  </Popover> */}
-                  
-                  <FormControl>
-                    <Input
-                      type="date"
-                      value={startDateInput}
-                      onChange={handleManualStartDateChange}
-                      placeholder="YYYY-MM-DD"
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value ? (
+                          format(field.value, "dd-MM-yyyy")
+                        ) : (
+                          <span>Select date</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      initialFocus
                     />
-                  </FormControl>
-                </div>
+                  </PopoverContent>
+                </Popover>
                 <FormMessage />
               </FormItem>
             )}
@@ -369,16 +320,39 @@ export function EditLoanForm({ loan, onSuccess }: EditLoanFormProps) {
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel>End Date</FormLabel>
-                <div className="grid gap-2">
-                  <FormControl>
-                    <Input
-                      type="date"
-                      value={endDateInput}
-                      onChange={handleManualEndDateChange}
-                      placeholder="YYYY-MM-DD"
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value ? (
+                          format(field.value, "dd-MM-yyyy")
+                        ) : (
+                          <span>Select date</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={(date) =>
+                        form.getValues("startDate")
+                          ? date <= form.getValues("startDate")
+                          : false
+                      }
+                      initialFocus
                     />
-                  </FormControl>
-                </div>
+                  </PopoverContent>
+                </Popover>
                 <FormMessage />
               </FormItem>
             )}
