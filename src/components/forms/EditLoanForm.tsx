@@ -304,7 +304,7 @@ export function EditLoanForm({ loan, onSuccess }: EditLoanFormProps) {
                       ? date <= form.getValues("startDate")
                       : false
                   }
-                  maxDate={2999}
+                  maxDate={2200}
                 />
                 <FormMessage />
               </FormItem>

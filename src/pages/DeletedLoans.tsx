@@ -33,7 +33,7 @@ const DeletedLoans = () => {
   const { toast } = useToast();
 
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 9;
 
   const deletedLoansArray: LoanType[] = useMemo(() => {
     return loans.filter(loan => loan.status === 'deleted');
@@ -88,7 +88,7 @@ const DeletedLoans = () => {
     const deletedDate = parseISO(deletedAt);
     const currentDate = new Date();
     const daysPassed = differenceInDays(currentDate, deletedDate);
-    const daysLeft = 10- daysPassed;
+    const daysLeft = 180- daysPassed;
     return daysLeft > 0 ? daysLeft : 0;
   };
 

@@ -124,7 +124,7 @@ export function DatePickerWithInput({
               }
               setOpen(false);
             }}
-            endMonth={new Date(maxDate || 2999, 12)}
+            endMonth={new Date(maxDate || 2200, 12)}
             initialFocus
           />
         </PopoverContent>
