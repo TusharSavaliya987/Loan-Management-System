@@ -26,15 +26,9 @@ import { CustomerInfo, Loan } from "@/types/loan";
 import { useLoanStore } from "@/store/loanStore";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { DatePickerWithInput } from "@/components/ui/date-picker";
 
 const formSchema = z
   .object({
@@ -361,34 +355,19 @@ export function LoanForm({ onSuccess }: LoanFormProps) {
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel>Start Date</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full sm:w-auto flex items-center justify-between gap-2 px-4 py-2 text-left font-normal rounded-md border",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        <span className="truncate">
-                          {field.value
-                            ? format(field.value, "dd-MM-yyyy")
-                            : "Start Date (DD-MM-YYYY)"}
-                        </span>
-                        <CalendarIcon className="h-4 w-4 opacity-50 shrink-0" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                <DatePickerWithInput
+                  value={field.value}
+                  onChange={(date) => {
+                    field.onChange(date);
+                    const endDate = form.getValues("endDate");
+                    if (date && endDate && date > endDate) {
+                      form.setValue("endDate", undefined as any, {
+                        shouldValidate: true,
+                      });
+                    }
+                  }}
+                  placeholder="Start Date (DD-MM-YYYY)"
+                />
                 <FormMessage />
               </FormItem>
             )}
@@ -400,39 +379,17 @@ export function LoanForm({ onSuccess }: LoanFormProps) {
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel>End Date</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full sm:w-auto flex items-center justify-between gap-2 px-4 py-2 text-left font-normal rounded-md border",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        <span className="truncate">
-                          {field.value
-                            ? format(field.value, "dd-MM-yyyy")
-                            : "End Date (DD-MM-YYYY)"}
-                        </span>
-                        <CalendarIcon className="h-4 w-4 opacity-50 shrink-0" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={(date) =>
-                        form.getValues("startDate")
-                          ? date <= form.getValues("startDate")
-                          : false
-                      }
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                <DatePickerWithInput
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="End Date (DD-MM-YYYY)"
+                  disabled={(date) =>
+                    form.getValues("startDate")
+                      ? date <= form.getValues("startDate")
+                      : false
+                  }
+                  maxDate={2999}
+                />
                 <FormMessage />
               </FormItem>
             )}

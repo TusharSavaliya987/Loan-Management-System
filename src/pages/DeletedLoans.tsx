@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLoanStore } from "@/store/loanStore";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { format, parseISO, differenceInDays } from "date-fns";
 import { ArrowLeft, Trash, RefreshCcw, AlertTriangle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Loan as LoanType } from "@/types/loan";
+import { SimplePagination } from "@/components/ui/pagination";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,9 +32,20 @@ const DeletedLoans = () => {
   const router = useRouter();
   const { toast } = useToast();
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+
   const deletedLoansArray: LoanType[] = useMemo(() => {
     return loans.filter(loan => loan.status === 'deleted');
   }, [loans]);
+
+  const paginatedLoans = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return deletedLoansArray.slice(startIndex, endIndex);
+  }, [deletedLoansArray, currentPage]);
+
+  const totalPages = Math.ceil(deletedLoansArray.length / itemsPerPage);
 
   const handleRestore = async (loanId: string) => {
     try {
@@ -98,78 +110,85 @@ const DeletedLoans = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {deletedLoansArray.map((loan) => {
-            const customer = getCustomer(loan.customerId);
-            const daysLeft = calculateDaysLeft(loan.deletedAt);
-            
-            return (
-              <Card key={loan.id} className="border-dashed border-destructive/30">
-                <CardHeader>
-                  <CardTitle>{customer?.name || "Unknown Customer"}</CardTitle>
-                  <CardDescription>
-                    Deleted on {loan.deletedAt ? format(parseISO(loan.deletedAt), "PPP") : "N/A"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex flex-col sm:flex-row sm:justify-between">
-                      <span className="text-muted-foreground">Loan Amount:</span>
-                      <span className="font-medium sm:text-right">₹{loan.principal.toLocaleString()}</span>
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {paginatedLoans.map((loan) => {
+              const customer = getCustomer(loan.customerId);
+              const daysLeft = calculateDaysLeft(loan.deletedAt);
+              
+              return (
+                <Card key={loan.id} className="border-dashed border-destructive/30">
+                  <CardHeader>
+                    <CardTitle>{customer?.name || "Unknown Customer"}</CardTitle>
+                    <CardDescription>
+                      Deleted on {loan.deletedAt ? format(parseISO(loan.deletedAt), "PPP") : "N/A"}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex flex-col sm:flex-row sm:justify-between">
+                        <span className="text-muted-foreground">Loan Amount:</span>
+                        <span className="font-medium sm:text-right">₹{loan.principal.toLocaleString()}</span>
+                      </div>
+                      <div className="flex flex-col sm:flex-row sm:justify-between">
+                        <span className="text-muted-foreground">Interest Rate:</span>
+                        <span className="font-medium sm:text-right">{loan.interestRate}%</span>
+                      </div>
+                      <div className="flex flex-col sm:flex-row sm:justify-between">
+                        <span className="text-muted-foreground">Expiry:</span>
+                        <span className="text-destructive font-semibold sm:text-right">
+                          {daysLeft} days left to restore
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex flex-col sm:flex-row sm:justify-between">
-                      <span className="text-muted-foreground">Interest Rate:</span>
-                      <span className="font-medium sm:text-right">{loan.interestRate}%</span>
-                    </div>
-                    <div className="flex flex-col sm:flex-row sm:justify-between">
-                      <span className="text-muted-foreground">Expiry:</span>
-                      <span className="text-destructive font-semibold sm:text-right">
-                        {daysLeft} days left to restore
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="w-full flex-wrap flex-col  sm:flex-row gap-2 sm:justify-between sm:items-center">
-                  <Button 
-                    onClick={() => handleRestore(loan.id)} 
-                    className="w-full  flex items-center"
-                    variant="outline"
-                  >
-                    <RefreshCcw className="mr-2 h-4 w-4" /> Restore Loan
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button 
-                        variant="destructive" 
-                        className="w-full  items-center justify-center"
-                      >
-                        <Trash className="mr-2 h-4 w-4" /> Permanently Delete
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center">
-                          <AlertTriangle className="mr-2 h-5 w-5 text-destructive" />
-                          Confirm Permanent Deletion
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to permanently delete the loan for "{customer?.name || 'Unknown Customer'}"? 
-                          This action cannot be undone and the loan data will be completely removed.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handlePermanentDelete(loan.id)} className="bg-destructive hover:bg-destructive/90 flex flex-col sm:flex-row gap-2">
-                          Delete Permanently
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </CardFooter>
-              </Card>
-            );
-          })}
-        </div>
+                  </CardContent>
+                  <CardFooter className="w-full flex-wrap flex-col  sm:flex-row gap-2 sm:justify-between sm:items-center">
+                    <Button 
+                      onClick={() => handleRestore(loan.id)} 
+                      className="w-full  flex items-center"
+                      variant="outline"
+                    >
+                      <RefreshCcw className="mr-2 h-4 w-4" /> Restore Loan
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="destructive" 
+                          className="w-full  items-center justify-center"
+                        >
+                          <Trash className="mr-2 h-4 w-4" /> Permanently Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="flex items-center">
+                            <AlertTriangle className="mr-2 h-5 w-5 text-destructive" />
+                            Confirm Permanent Deletion
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to permanently delete the loan for "{customer?.name || 'Unknown Customer'}"? 
+                            This action cannot be undone and the loan data will be completely removed.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handlePermanentDelete(loan.id)} className="bg-destructive hover:bg-destructive/90 flex flex-col sm:flex-row gap-2">
+                            Delete Permanently
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </CardFooter>
+                </Card>
+              );
+            })}
+          </div>
+          <SimplePagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </>
       )}
     </div>
   );

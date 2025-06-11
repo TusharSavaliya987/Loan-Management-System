@@ -10,6 +10,7 @@ import { CustomerForm } from "@/components/forms/CustomerForm";
 import { useLoanStore } from "@/store/loanStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { IndianRupee, User } from "lucide-react";
+import { SimplePagination } from "@/components/ui/pagination";
 
 const Loans = () => {
   const loans = useLoanStore(state => state.loans);
@@ -19,12 +20,17 @@ const Loans = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [openLoanDialog, setOpenLoanDialog] = useState(false);
   const [openCustomerDialog, setOpenCustomerDialog] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
   
   const filteredLoans = useMemo(() => {
     return loans
       .filter(loan => {
         const customer = getCustomer(loan.customerId);
         if (!customer) return false;
+        
+        // Exclude deleted loans from this page
+        if (loan.status === 'deleted') return false;
         
         const matchesSearch = 
           customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -55,6 +61,19 @@ const Loans = () => {
         return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
       });
   }, [loans, getCustomer, searchQuery, statusFilter]);
+
+  const paginatedLoans = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredLoans.slice(startIndex, endIndex);
+  }, [filteredLoans, currentPage]);
+
+  const totalPages = Math.ceil(filteredLoans.length / itemsPerPage);
+
+  // Reset to first page when filters change
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
   
   return (
     <div className="space-y-6">
@@ -135,14 +154,21 @@ const Loans = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredLoans.map(loan => {
-            const customer = getCustomer(loan.customerId)!;
-            return (
-              <LoanCard key={loan.id} loan={loan} customer={customer} />
-            );
-          })}
-        </div>
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {paginatedLoans.map(loan => {
+              const customer = getCustomer(loan.customerId)!;
+              return (
+                <LoanCard key={loan.id} loan={loan} customer={customer} />
+              );
+            })}
+          </div>
+          <SimplePagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </>
       )}
     </div>
   );

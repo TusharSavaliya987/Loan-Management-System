@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { CustomerInfo, Loan, InterestPayment, InterestFrequency } from '../types/loan';
 import { addMonths, format, parseISO, addDays, isBefore } from 'date-fns';
 import apiClient from '@/lib/apiClient'; 
-import { useAuthStore } from './authStore'; // AppUser import removed as it's not directly used here
+import { useAuthStore } from './authStore'; 
 
 // Helper function to generate interest payment schedules based on loan details
 function generateInterestPayments(

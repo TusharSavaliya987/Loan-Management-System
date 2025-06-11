@@ -16,6 +16,7 @@ import { IndianRupee } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Label } from "@/components/ui/label";
+import { SimplePagination } from "@/components/ui/pagination";
 
 export function UpcomingPayments() {
   const router = useRouter();
@@ -28,6 +29,8 @@ export function UpcomingPayments() {
   const isLoadingCustomers = useLoanStore((state) => state.isLoadingCustomers);
 
   const [selectedDays, setSelectedDays] = useState(30);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 3;
 
   const upcomingPayments = useMemo(() => {
     if (isLoadingLoans || isLoadingCustomers) {
@@ -42,6 +45,19 @@ export function UpcomingPayments() {
     isLoadingCustomers,
     selectedDays,
   ]);
+
+  const paginatedPayments = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return upcomingPayments.slice(startIndex, endIndex);
+  }, [upcomingPayments, currentPage]);
+
+  const totalPages = Math.ceil(upcomingPayments.length / itemsPerPage);
+
+  // Reset to first page when time period changes
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [selectedDays]);
 
   const handlePaymentClick = (loanId: string) => {
     router.push(`/loans/${loanId}`);
@@ -102,45 +118,52 @@ export function UpcomingPayments() {
             No upcoming payments found.
           </p>
         ) : (
-          <div className="space-y-4">
-            {upcomingPayments.map(({ loan, payment, customer }) => {
-              const customerName = customer?.name || "N/A";
-              const customerMobile = customer?.mobile || "-";
+          <>
+            <div className="space-y-4">
+              {paginatedPayments.map(({ loan, payment, customer }) => {
+                const customerName = customer?.name || "N/A";
+                const customerMobile = customer?.mobile || "-";
 
-              return (
-                <div
-                  key={payment.id}
-                  className="border rounded-md p-4 flex flex-col gap-2 cursor-pointer transition-colors hover:bg-muted/50"
-                  onClick={() => handlePaymentClick(loan.id)}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-medium">{customerName}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {customerMobile}
-                      </p>
+                return (
+                  <div
+                    key={payment.id}
+                    className="border rounded-md p-4 flex flex-col gap-2 cursor-pointer transition-colors hover:bg-muted/50"
+                    onClick={() => handlePaymentClick(loan.id)}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-medium">{customerName}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {customerMobile}
+                        </p>
+                      </div>
+                      <Badge variant="default">
+                          {format(parseISO(payment.dueDate), "dd MMM yyyy")}
+                      </Badge>
                     </div>
-                    <Badge variant="default">
-                        {format(parseISO(payment.dueDate), "dd MMM yyyy")}
-                    </Badge>
+                    <Separator />
+                    <div className="flex justify-between items-center">
+                        <p className="text-sm">
+                          Interest Due:{" "}
+                          <span className="font-medium flex items-center">
+                            <IndianRupee className="h-3 w-3 mr-1" />
+                            {payment.amount.toLocaleString("en-IN")}
+                          </span>
+                        </p>
+                      <Badge variant="outline" className="text-xs">
+                        {loan.interestFrequency}
+                      </Badge>
+                    </div>
                   </div>
-                  <Separator />
-                  <div className="flex justify-between items-center">
-                      <p className="text-sm">
-                        Interest Due:{" "}
-                        <span className="font-medium flex items-center">
-                          <IndianRupee className="h-3 w-3 mr-1" />
-                          {payment.amount.toLocaleString("en-IN")}
-                        </span>
-                      </p>
-                    <Badge variant="outline" className="text-xs">
-                      {loan.interestFrequency}
-                    </Badge>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+            <SimplePagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </>
         )}
       </CardContent>
     </Card>

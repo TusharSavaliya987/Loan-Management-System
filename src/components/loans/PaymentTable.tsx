@@ -37,9 +37,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 interface PaymentTableProps {
   loan: Loan;
+  startIndex?: number;
 }
 
-export function PaymentTable({ loan }: PaymentTableProps) {
+export function PaymentTable({ loan, startIndex = 0 }: PaymentTableProps) {
   const [selectedPayment, setSelectedPayment] =
     useState<InterestPayment | null>(null);
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -125,7 +126,7 @@ export function PaymentTable({ loan }: PaymentTableProps) {
         <TableBody>
           {loan.interestPayments.map((payment, index) => (
             <TableRow key={payment.id}>
-              <TableCell>{index + 1}</TableCell>
+              <TableCell>{startIndex + index + 1}</TableCell>
               <TableCell className="whitespace-nowrap">
                 {payment.periodStart && payment.periodEnd ? (
                   <span className="text-xs">

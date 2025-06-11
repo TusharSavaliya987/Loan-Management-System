@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useLoanStore } from "@/store/loanStore";
 import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -17,11 +17,16 @@ import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import apiClient from "@/lib/apiClient";
 import { Loan, CustomerInfo } from "@/types/loan";
+import { SimplePagination } from "@/components/ui/pagination";
 
 const LoanDetails = () => {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const loanIdFromParams = params?.id;
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const [activeTab, setActiveTab] = useState("all");
+  const itemsPerPage = 10;
   
   const loanFromStore = useLoanStore(state => loanIdFromParams ? state.getLoan(loanIdFromParams) : null);
   const getCustomerFromStore = useLoanStore(state => state.getCustomer);
@@ -32,6 +37,10 @@ const LoanDetails = () => {
   const [principalConfirmOpen, setPrincipalConfirmOpen] = useState(false);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
+
   const customerFromStore = useMemo(() => {
     if (!loanFromStore) return null;
     return getCustomerFromStore(loanFromStore.customerId);
@@ -56,6 +65,27 @@ const LoanDetails = () => {
     if (!loanFromStore) return 0;
     return paidInterestPayments.reduce((sum, payment) => sum + (payment.amountPaid ?? payment.amount), 0);
   }, [paidInterestPayments]);
+  
+  const getPageItems = (items: any[]) => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return items.slice(startIndex, endIndex);
+  };
+  
+  const totalPages = useMemo(() => {
+    if (!loanFromStore) return 1;
+    return Math.ceil(loanFromStore.interestPayments.length / itemsPerPage);
+  }, [loanFromStore, itemsPerPage]);
+
+  const totalPendingPages = useMemo(() => {
+    if (!pendingInterestPayments) return 1;
+    return Math.ceil(pendingInterestPayments.length / itemsPerPage);
+  }, [pendingInterestPayments, itemsPerPage]);
+
+  const totalPaidPages = useMemo(() => {
+    if (!paidInterestPayments) return 1;
+    return Math.ceil(paidInterestPayments.length / itemsPerPage);
+  }, [paidInterestPayments, itemsPerPage]);
   
   const handleExportPDF = async () => {
     if (!loanIdFromParams) {
@@ -295,7 +325,7 @@ const LoanDetails = () => {
             {loanFromStore.interestPayments.length === 0 ? (
               <p className="text-center py-4 text-muted-foreground">No payment schedules found</p>
             ) : (
-              <Tabs defaultValue="all">
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="mb-4">
                   <TabsTrigger value="all">All ({loanFromStore.interestPayments.length})</TabsTrigger>
                   <TabsTrigger value="pending">Pending ({pendingInterestPayments.length})</TabsTrigger>
@@ -303,7 +333,18 @@ const LoanDetails = () => {
                 </TabsList>
                 
                 <TabsContent value="all" className="overflow-x-auto">
-                  <PaymentTable loan={loanFromStore} />
+                  <PaymentTable 
+                    loan={{
+                      ...loanFromStore,
+                      interestPayments: getPageItems(loanFromStore.interestPayments)
+                    }}
+                    startIndex={(currentPage - 1) * itemsPerPage}
+                  />
+                  <SimplePagination 
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
                 </TabsContent>
                 
                 <TabsContent value="pending" className="overflow-x-auto">
@@ -313,12 +354,20 @@ const LoanDetails = () => {
                       <AlertDescription>All payments for this loan have been completed.</AlertDescription>
                     </Alert>
                   ) : (
-                    <PaymentTable 
-                      loan={{
-                        ...loanFromStore,
-                        interestPayments: pendingInterestPayments
-                      }} 
-                    />
+                    <>
+                      <PaymentTable 
+                        loan={{
+                          ...loanFromStore,
+                          interestPayments: getPageItems(pendingInterestPayments)
+                        }}
+                        startIndex={(currentPage - 1) * itemsPerPage}
+                      />
+                      <SimplePagination 
+                        currentPage={currentPage}
+                        totalPages={totalPendingPages}
+                        onPageChange={setCurrentPage}
+                      />
+                    </>
                   )}
                 </TabsContent>
                 
@@ -329,12 +378,20 @@ const LoanDetails = () => {
                       <AlertDescription>No payments have been marked as paid yet.</AlertDescription>
                     </Alert>
                   ) : (
-                    <PaymentTable 
-                      loan={{
-                        ...loanFromStore,
-                        interestPayments: paidInterestPayments
-                      }} 
-                    />
+                    <>
+                      <PaymentTable 
+                        loan={{
+                          ...loanFromStore,
+                          interestPayments: getPageItems(paidInterestPayments)
+                        }}
+                        startIndex={(currentPage - 1) * itemsPerPage}
+                      />
+                      <SimplePagination 
+                        currentPage={currentPage}
+                        totalPages={totalPaidPages}
+                        onPageChange={setCurrentPage}
+                      />
+                    </>
                   )}
                 </TabsContent>
               </Tabs>

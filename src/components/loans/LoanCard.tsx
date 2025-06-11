@@ -81,7 +81,9 @@ export function LoanCard({ loan, customer }: LoanCardProps) {
             className={`px-2 py-1 rounded text-xs font-medium ${
               loan.status === "active"
                 ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
+                : loan.status === "closed"
+                ? "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
+                : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
             }`}
           >
             {loan.status.charAt(0).toUpperCase() + loan.status.slice(1)}
